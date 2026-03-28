@@ -64,7 +64,7 @@ const Index = () => {
               animate={{ opacity: 1, x: 0 }}
               className="text-2xl font-display font-bold text-primary-foreground"
             >
-              Moment<span className="text-primary">Vault</span>
+              Moment<span className="text-gold">ique</span>
             </motion.h2>
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -128,14 +128,6 @@ const Index = () => {
               >
                 Get Started Free
               </Button>
-              <Button
-                variant="ghost"
-                size="lg"
-                className="text-lg px-8 py-6 text-primary-foreground hover:bg-primary-foreground/10"
-                onClick={() => navigate("/event/demo")}
-              >
-                View Demo Event
-              </Button>
             </motion.div>
           </div>
         </div>
@@ -168,7 +160,7 @@ const Index = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className="p-6 md:p-8 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-lg transition-all duration-300 group"
+              className="p-6 md:p-8 rounded-xl bg-card border border-border hover:border-gold/30 hover:shadow-lg transition-all duration-300 group"
             >
               <div className="w-12 h-12 rounded-lg gold-gradient flex items-center justify-center mb-5">
                 <feature.icon className="w-6 h-6 text-primary-foreground" />
@@ -228,11 +220,14 @@ const Index = () => {
       {/* Footer */}
       <footer className="py-10 border-t border-border">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-xl font-display font-bold text-foreground mb-2">
-            Moment<span className="text-primary">Vault</span>
+          <h2 className="text-xl font-display font-bold text-foreground mb-1">
+            Moment<span className="text-gold">ique</span>
           </h2>
+          <p className="text-muted-foreground font-body text-xs mb-1">
+            Powered by <span className="font-semibold">VION Events</span>
+          </p>
           <p className="text-muted-foreground font-body text-sm">
-            © {new Date().getFullYear()} MomentVault. Capture every moment together.
+            © {new Date().getFullYear()} Momentique. Capture every moment together.
           </p>
         </div>
       </footer>

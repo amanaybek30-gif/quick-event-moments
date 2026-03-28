@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { Calendar, MapPin } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-event.jpg";
 
 const SAMPLE_EVENTS = [
@@ -35,8 +34,6 @@ interface FeaturedEventsProps {
 }
 
 const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
-  const navigate = useNavigate();
-
   if (!visible) return null;
 
   return (
@@ -55,7 +52,7 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
             Featured Events
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto font-body">
-            See what's happening — scan, snap, and share at these events.
+            See what's happening — real events powered by Momentique.
           </p>
         </motion.div>
 
@@ -67,8 +64,7 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              onClick={() => navigate(`/event/${event.id}`)}
-              className="group cursor-pointer rounded-xl overflow-hidden bg-card border border-border hover:border-primary/30 hover:shadow-xl transition-all duration-300"
+              className="group rounded-xl overflow-hidden bg-card border border-border hover:border-gold/30 hover:shadow-xl transition-all duration-300"
             >
               <div className="relative h-44 overflow-hidden">
                 <img
@@ -84,7 +80,7 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
                 </div>
               </div>
               <div className="p-4">
-                <h3 className="text-lg font-display font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+                <h3 className="text-lg font-display font-semibold text-foreground mb-2">
                   {event.name}
                 </h3>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground font-body">

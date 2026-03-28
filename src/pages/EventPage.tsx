@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, Upload, Video, CheckCircle2, ArrowLeft, User } from "lucide-react";
@@ -9,6 +9,14 @@ import MediaGallery from "@/components/MediaGallery";
 import heroImage from "@/assets/hero-event.jpg";
 
 type UploadState = "idle" | "uploading" | "success";
+
+interface CapturedMedia {
+  id: string;
+  url: string;
+  type: "image" | "video";
+  uploadedAt: string;
+  uploaderName: string;
+}
 
 const DEMO_EVENT = {
   id: "demo",
@@ -24,34 +32,46 @@ const EventPage = () => {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [progress, setProgress] = useState(0);
   const [guestName, setGuestName] = useState("");
+  const [capturedMedia, setCapturedMedia] = useState<CapturedMedia[]>([]);
 
   const event = DEMO_EVENT;
 
-  const simulateUpload = (files: FileList | null) => {
+  const processFiles = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
+    
+    setView("upload");
     setUploadState("uploading");
     setProgress(0);
+
+    // Create preview URLs and add to gallery
+    const newMedia: CapturedMedia[] = Array.from(files).map((file, i) => ({
+      id: `capture-${Date.now()}-${i}`,
+      url: URL.createObjectURL(file),
+      type: file.type.startsWith("video") ? "video" as const : "image" as const,
+      uploadedAt: new Date().toISOString(),
+      uploaderName: guestName || "Guest",
+    }));
 
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
+          setCapturedMedia((existing) => [...newMedia, ...existing]);
           setUploadState("success");
           return 100;
         }
         return prev + Math.random() * 15 + 5;
       });
     }, 200);
-  };
+  }, [guestName]);
 
   const handleCapture = (type: "photo" | "video") => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = type === "photo" ? "image/*" : "video/*";
     input.capture = "environment";
-    input.onchange = (e) => simulateUpload((e.target as HTMLInputElement).files);
+    input.onchange = (e) => processFiles((e.target as HTMLInputElement).files);
     input.click();
-    setView("upload");
   };
 
   const handleFileUpload = () => {
@@ -59,9 +79,8 @@ const EventPage = () => {
     input.type = "file";
     input.accept = "image/*,video/*";
     input.multiple = true;
-    input.onchange = (e) => simulateUpload((e.target as HTMLInputElement).files);
+    input.onchange = (e) => processFiles((e.target as HTMLInputElement).files);
     input.click();
-    setView("upload");
   };
 
   const resetUpload = () => {
@@ -85,7 +104,7 @@ const EventPage = () => {
           </div>
         </div>
         <div className="container mx-auto px-4 py-6">
-          <MediaGallery />
+          <MediaGallery extraMedia={capturedMedia} />
         </div>
       </div>
     );
@@ -145,7 +164,7 @@ const EventPage = () => {
                   Capture the Moment 🎓
                 </h2>
                 <p className="text-muted-foreground font-body">
-                  Upload your photos and videos to the official event gallery
+                  Take photos and videos to add to the official event gallery
                 </p>
               </motion.div>
 
@@ -216,12 +235,22 @@ const EventPage = () => {
               >
                 <Button
                   variant="link"
-                  className="text-primary font-body"
+                  className="text-gold font-body"
                   onClick={() => setView("gallery")}
                 >
                   View Event Gallery →
                 </Button>
               </motion.div>
+
+              {/* Powered by */}
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="text-center text-xs text-muted-foreground mt-6 font-body"
+              >
+                Powered by <span className="font-semibold">VION Events</span>
+              </motion.p>
             </div>
           </motion.div>
         )}
