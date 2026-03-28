@@ -260,8 +260,8 @@ const EventPage = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ type: "spring", damping: 15 }}
                 >
-                  <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle2 className="w-10 h-10 text-green-600" />
+                  <div className="w-20 h-20 rounded-full bg-accent flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 className="w-10 h-10 text-accent-foreground" />
                   </div>
                   <h2 className="text-2xl font-display font-bold text-foreground mb-2">
                     ✅ Your upload has been added!
