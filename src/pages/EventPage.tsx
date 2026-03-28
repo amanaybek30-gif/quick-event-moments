@@ -174,15 +174,27 @@ const EventPage = () => {
                 transition={{ delay: 0.4 }}
                 className="space-y-3"
               >
-                <Button
-                  variant="gold"
-                  size="lg"
-                  className="w-full text-lg py-6"
-                  onClick={() => handleCapture("photo")}
-                >
-                  <Camera className="w-5 h-5 mr-2" />
-                  Take Photo
-                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="gold"
+                    size="lg"
+                    className="w-full text-lg py-6 flex-col h-auto gap-1"
+                    onClick={() => handleCapture("photo")}
+                  >
+                    <Camera className="w-6 h-6" />
+                    <span>Take Photo</span>
+                  </Button>
+
+                  <Button
+                    variant="gold"
+                    size="lg"
+                    className="w-full text-lg py-6 flex-col h-auto gap-1"
+                    onClick={() => handleCapture("video")}
+                  >
+                    <Video className="w-6 h-6" />
+                    <span>Record Video</span>
+                  </Button>
+                </div>
 
                 <Button
                   variant="gold-outline"
@@ -191,17 +203,7 @@ const EventPage = () => {
                   onClick={handleFileUpload}
                 >
                   <Upload className="w-5 h-5 mr-2" />
-                  Upload Photo
-                </Button>
-
-                <Button
-                  variant="gold-outline"
-                  size="lg"
-                  className="w-full text-lg py-6"
-                  onClick={() => handleCapture("video")}
-                >
-                  <Video className="w-5 h-5 mr-2" />
-                  Upload Video
+                  Upload from Device
                 </Button>
               </motion.div>
 
