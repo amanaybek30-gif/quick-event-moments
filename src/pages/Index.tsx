@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Camera, Upload, QrCode, Shield, Zap, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import FeaturedEvents from "@/components/FeaturedEvents";
 import heroImage from "@/assets/hero-event.jpg";
 
 const features = [
@@ -139,6 +140,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Featured Events */}
+      <FeaturedEvents visible={true} />
 
       {/* Features */}
       <section className="py-20 md:py-28 container mx-auto px-4">
