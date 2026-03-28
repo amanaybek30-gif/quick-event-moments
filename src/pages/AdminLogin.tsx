@@ -17,7 +17,6 @@ const AdminLogin = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Demo login — in production this would use Lovable Cloud auth
     setTimeout(() => {
       if (email && password) {
         localStorage.setItem("mv_role", "admin");
@@ -49,7 +48,7 @@ const AdminLogin = () => {
 
         <div className="text-center mb-8">
           <h1 className="text-3xl font-display font-bold text-foreground mb-2">
-            Moment<span className="text-primary">Vault</span>
+            Moment<span className="text-gold">ique</span>
           </h1>
           <p className="text-muted-foreground font-body">Sign in to manage your events</p>
         </div>

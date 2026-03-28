@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Filter, Image as ImageIcon, Video, X } from "lucide-react";
+import { Filter, Image as ImageIcon, Video, X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type MediaType = "all" | "photos" | "videos";
 
+interface MediaItem {
+  id: string;
+  url: string;
+  type: "image" | "video";
+  uploadedAt: string;
+  uploaderName: string;
+}
+
 // Demo placeholder images
-const DEMO_MEDIA = Array.from({ length: 12 }, (_, i) => ({
+const DEMO_MEDIA: MediaItem[] = Array.from({ length: 12 }, (_, i) => ({
   id: `media-${i}`,
   url: `https://picsum.photos/seed/${i + 10}/400/400`,
   type: i % 4 === 0 ? ("video" as const) : ("image" as const),
@@ -16,17 +24,22 @@ const DEMO_MEDIA = Array.from({ length: 12 }, (_, i) => ({
 
 interface MediaGalleryProps {
   showDownload?: boolean;
+  extraMedia?: MediaItem[];
 }
 
-const MediaGallery = ({ showDownload = false }: MediaGalleryProps) => {
+const MediaGallery = ({ showDownload = false, extraMedia = [] }: MediaGalleryProps) => {
   const [filter, setFilter] = useState<MediaType>("all");
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
 
-  const filtered = DEMO_MEDIA.filter((m) => {
+  const allMedia = [...extraMedia, ...DEMO_MEDIA];
+
+  const filtered = allMedia.filter((m) => {
     if (filter === "photos") return m.type === "image";
     if (filter === "videos") return m.type === "video";
     return true;
   });
+
+  const selectedItem = allMedia.find((m) => m.id === selectedMedia);
 
   return (
     <div>
@@ -39,7 +52,7 @@ const MediaGallery = ({ showDownload = false }: MediaGalleryProps) => {
         ].map(({ key, label, icon: Icon }) => (
           <Button
             key={key}
-            variant={filter === key ? "default" : "outline"}
+            variant={filter === key ? "gold" : "outline"}
             size="sm"
             onClick={() => setFilter(key)}
             className="shrink-0"
@@ -61,12 +74,20 @@ const MediaGallery = ({ showDownload = false }: MediaGalleryProps) => {
             className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group bg-muted"
             onClick={() => setSelectedMedia(media.id)}
           >
-            <img
-              src={media.url}
-              alt={`Upload by ${media.uploaderName}`}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-            />
+            {media.type === "video" && media.url.startsWith("blob:") ? (
+              <video
+                src={media.url}
+                className="w-full h-full object-cover"
+                muted
+              />
+            ) : (
+              <img
+                src={media.url}
+                alt={`Upload by ${media.uploaderName}`}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
+              />
+            )}
             {media.type === "video" && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-10 h-10 rounded-full bg-foreground/60 flex items-center justify-center">
@@ -90,7 +111,7 @@ const MediaGallery = ({ showDownload = false }: MediaGalleryProps) => {
       )}
 
       {/* Lightbox */}
-      {selectedMedia && (
+      {selectedMedia && selectedItem && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -105,11 +126,37 @@ const MediaGallery = ({ showDownload = false }: MediaGalleryProps) => {
           >
             <X className="w-6 h-6" />
           </Button>
-          <img
-            src={DEMO_MEDIA.find((m) => m.id === selectedMedia)?.url}
-            alt="Full view"
-            className="max-w-full max-h-[85vh] rounded-lg object-contain"
-          />
+          {showDownload && (
+            <a
+              href={selectedItem.url}
+              download
+              className="absolute top-4 right-16"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-primary-foreground hover:bg-primary-foreground/10"
+              >
+                <Download className="w-6 h-6" />
+              </Button>
+            </a>
+          )}
+          {selectedItem.type === "video" ? (
+            <video
+              src={selectedItem.url}
+              controls
+              autoPlay
+              className="max-w-full max-h-[85vh] rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <img
+              src={selectedItem.url}
+              alt="Full view"
+              className="max-w-full max-h-[85vh] rounded-lg object-contain"
+            />
+          )}
         </motion.div>
       )}
     </div>

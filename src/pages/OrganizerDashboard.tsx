@@ -117,7 +117,7 @@ const OrganizerDashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             className="bg-card rounded-xl border border-border p-4 text-center"
           >
-            <Upload className="w-5 h-5 text-primary mx-auto mb-1" />
+            <Upload className="w-5 h-5 text-gold mx-auto mb-1" />
             <p className="text-xl font-display font-bold text-foreground">{event.uploads}</p>
             <p className="text-xs text-muted-foreground font-body">Uploads</p>
           </motion.div>
@@ -127,7 +127,7 @@ const OrganizerDashboard = () => {
             transition={{ delay: 0.05 }}
             className="bg-card rounded-xl border border-border p-4 text-center"
           >
-            <Users className="w-5 h-5 text-primary mx-auto mb-1" />
+            <Users className="w-5 h-5 text-gold mx-auto mb-1" />
             <p className="text-xl font-display font-bold text-foreground">{event.contributors}</p>
             <p className="text-xs text-muted-foreground font-body">Contributors</p>
           </motion.div>
@@ -137,7 +137,7 @@ const OrganizerDashboard = () => {
             transition={{ delay: 0.1 }}
             className="bg-card rounded-xl border border-border p-4 text-center"
           >
-            <ImageIcon className="w-5 h-5 text-primary mx-auto mb-1" />
+            <ImageIcon className="w-5 h-5 text-gold mx-auto mb-1" />
             <p className="text-xl font-display font-bold text-foreground">
               {Math.round(event.uploads * 0.7)}
             </p>

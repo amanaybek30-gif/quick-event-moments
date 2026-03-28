@@ -7,7 +7,6 @@ import {
   Plus,
   LogOut,
   MoreVertical,
-  Trash2,
   Eye,
   Upload,
 } from "lucide-react";
@@ -87,11 +86,6 @@ const AdminDashboard = () => {
     toast({ title: "Event created!", description: `"${event.name}" is ready to go.` });
   };
 
-  const handleDelete = (id: string) => {
-    setEvents(events.filter((e) => e.id !== id));
-    toast({ title: "Event deleted" });
-  };
-
   const handleLogout = () => {
     localStorage.removeItem("mv_role");
     navigate("/");
@@ -103,7 +97,7 @@ const AdminDashboard = () => {
       <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-display font-bold text-foreground">
-            Moment<span className="text-primary">Vault</span>
+            Moment<span className="text-gold">ique</span>
           </h1>
           <div className="flex items-center gap-2">
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -192,7 +186,7 @@ const AdminDashboard = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.08 }}
-              className="bg-card rounded-xl border border-border overflow-hidden hover:border-primary/30 transition-colors"
+              className="bg-card rounded-xl border border-border overflow-hidden hover:border-gold/30 transition-colors"
             >
               <div className="flex">
                 <div className="w-24 h-24 md:w-32 md:h-32 shrink-0">
@@ -223,13 +217,6 @@ const AdminDashboard = () => {
                           <DropdownMenuItem onClick={() => navigate(`/event/${event.id}`)}>
                             <ImageIcon className="w-4 h-4 mr-2" />
                             Guest View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(event.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
