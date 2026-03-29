@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -9,9 +9,11 @@ import {
   Users,
   Image as ImageIcon,
   Share2,
+  Lock,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -21,26 +23,95 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import MediaGallery from "@/components/MediaGallery";
-import heroImage from "@/assets/hero-event.jpg";
-
-const DEMO_EVENT = {
-  id: "demo",
-  name: "Class of 2026 Graduation",
-  date: "2026-06-15",
-  description: "Annual graduation ceremony",
-  coverImage: heroImage,
-  uploads: 47,
-  contributors: 23,
-};
+import { getStoredEvents, type EventData } from "./AdminDashboard";
 
 const OrganizerDashboard = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [qrOpen, setQrOpen] = useState(false);
-  const event = DEMO_EVENT;
+  const [authenticated, setAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [event, setEvent] = useState<EventData | null>(null);
 
-  const eventUrl = `${window.location.origin}/event/${eventId || event.id}`;
+  useEffect(() => {
+    const events = getStoredEvents();
+    const found = events.find((e) => e.id === eventId);
+    if (found) {
+      setEvent(found);
+      // Check if already authenticated via admin or session
+      const role = localStorage.getItem("mv_role");
+      const sessionKey = `organizer_auth_${eventId}`;
+      if (role === "admin" || sessionStorage.getItem(sessionKey) === "true") {
+        setAuthenticated(true);
+      }
+    }
+  }, [eventId]);
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (event && passwordInput === event.password) {
+      setAuthenticated(true);
+      sessionStorage.setItem(`organizer_auth_${eventId}`, "true");
+      toast({ title: "Access granted!", description: "Welcome to the event dashboard." });
+    } else {
+      toast({ title: "Wrong password", description: "Please try again.", variant: "destructive" });
+    }
+  };
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground font-body">Event not found</p>
+      </div>
+    );
+  }
+
+  // Password gate
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md"
+        >
+          <Button variant="ghost" size="sm" className="mb-8" onClick={() => navigate("/")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-display font-bold text-foreground mb-2">
+              {event.name}
+            </h1>
+            <p className="text-muted-foreground font-body">Enter the event password to continue</p>
+          </div>
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="password"
+                placeholder="Event password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className="pl-10 h-12 font-body"
+                required
+                autoFocus
+              />
+            </div>
+            <Button type="submit" variant="gold" size="lg" className="w-full py-6">
+              Access Event
+            </Button>
+          </form>
+          <p className="text-center text-xs text-muted-foreground mt-6 font-body">
+            Powered by <span className="font-semibold">VION Events</span>
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  const eventUrl = `${window.location.origin}/event/${eventId}`;
 
   const downloadQR = () => {
     const svg = document.querySelector("#qr-code-svg");
@@ -56,7 +127,11 @@ const OrganizerDashboard = () => {
     img.onload = () => {
       canvas.width = 1024;
       canvas.height = 1024;
-      ctx?.drawImage(img, 0, 0, 1024, 1024);
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, 1024, 1024);
+        ctx.drawImage(img, 64, 64, 896, 896);
+      }
       const link = document.createElement("a");
       link.download = `${event.name.replace(/\s+/g, "-")}-QR.png`;
       link.href = canvas.toDataURL("image/png");
@@ -159,14 +234,14 @@ const OrganizerDashboard = () => {
                 <DialogTitle className="font-display text-xl">Event QR Code</DialogTitle>
               </DialogHeader>
               <div className="flex flex-col items-center gap-4 py-4">
-                <div className="p-4 bg-card rounded-xl border border-border">
+                <div className="p-4 bg-white rounded-xl border border-border">
                   <QRCodeSVG
                     id="qr-code-svg"
                     value={eventUrl}
                     size={220}
                     level="H"
-                    fgColor="hsl(220, 15%, 15%)"
-                    bgColor="transparent"
+                    fgColor="#1a1a1a"
+                    bgColor="#ffffff"
                   />
                 </div>
                 <p className="text-sm text-muted-foreground font-body break-all px-4">

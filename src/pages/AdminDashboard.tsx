@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -9,6 +9,8 @@ import {
   MoreVertical,
   Eye,
   Upload,
+  Trash2,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,9 +29,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import heroImage from "@/assets/hero-event.jpg";
+import sampleGraduation from "@/assets/sample-graduation.jpg";
+import sampleConference from "@/assets/sample-conference.jpg";
 
-interface Event {
+export interface EventData {
   id: string;
   name: string;
   date: string;
@@ -37,53 +40,108 @@ interface Event {
   coverImage: string;
   uploads: number;
   contributors: number;
+  password: string;
 }
 
-const INITIAL_EVENTS: Event[] = [
+const INITIAL_EVENTS: EventData[] = [
   {
     id: "demo",
     name: "Class of 2026 Graduation",
     date: "2026-06-15",
     description: "Annual graduation ceremony",
-    coverImage: heroImage,
+    coverImage: sampleGraduation,
     uploads: 47,
     contributors: 23,
+    password: "grad2026",
   },
   {
     id: "conf-2026",
     name: "Tech Summit 2026",
     date: "2026-09-20",
     description: "Annual technology conference",
-    coverImage: heroImage,
+    coverImage: sampleConference,
     uploads: 128,
     contributors: 64,
+    password: "tech2026",
   },
 ];
+
+// Shared event store so other pages can access events
+const EVENT_STORAGE_KEY = "momentique_events";
+
+export const getStoredEvents = (): EventData[] => {
+  const stored = localStorage.getItem(EVENT_STORAGE_KEY);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return INITIAL_EVENTS;
+    }
+  }
+  return INITIAL_EVENTS;
+};
+
+export const storeEvents = (events: EventData[]) => {
+  localStorage.setItem(EVENT_STORAGE_KEY, JSON.stringify(events));
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [events, setEvents] = useState<Event[]>(INITIAL_EVENTS);
+  const [events, setEvents] = useState<EventData[]>(() => getStoredEvents());
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [newEvent, setNewEvent] = useState({ name: "", date: "", description: "" });
+  const [newEvent, setNewEvent] = useState({ name: "", date: "", description: "", password: "" });
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    const role = localStorage.getItem("mv_role");
+    if (role !== "admin") {
+      navigate("/admin/login");
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    storeEvents(events);
+  }, [events]);
 
   const totalUploads = events.reduce((sum, e) => sum + e.uploads, 0);
 
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCoverFile(file);
+      setCoverPreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleCreateEvent = (e: React.FormEvent) => {
     e.preventDefault();
-    const event: Event = {
+    if (!newEvent.password.trim()) {
+      toast({ title: "Password required", description: "Set a password for organizer access.", variant: "destructive" });
+      return;
+    }
+    const event: EventData = {
       id: `evt-${Date.now()}`,
       name: newEvent.name,
       date: newEvent.date,
       description: newEvent.description,
-      coverImage: heroImage,
+      coverImage: coverPreview || sampleGraduation,
       uploads: 0,
       contributors: 0,
+      password: newEvent.password,
     };
     setEvents([event, ...events]);
-    setNewEvent({ name: "", date: "", description: "" });
+    setNewEvent({ name: "", date: "", description: "", password: "" });
+    setCoverPreview(null);
+    setCoverFile(null);
     setDialogOpen(false);
-    toast({ title: "Event created!", description: `"${event.name}" is ready to go.` });
+    toast({ title: "Event created!", description: `"${event.name}" is ready. Password: ${event.password}` });
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    setEvents(events.filter((e) => e.id !== eventId));
+    toast({ title: "Event deleted" });
   };
 
   const handleLogout = () => {
@@ -132,6 +190,41 @@ const AdminDashboard = () => {
                     onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                     className="font-body"
                   />
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Event password (for organizers)"
+                      value={newEvent.password}
+                      onChange={(e) => setNewEvent({ ...newEvent, password: e.target.value })}
+                      className="pl-10 h-12 font-body"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-body text-muted-foreground mb-2">
+                      Cover Image
+                    </label>
+                    <div
+                      className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-gold/50 transition-colors"
+                      onClick={() => document.getElementById("cover-upload")?.click()}
+                    >
+                      {coverPreview ? (
+                        <img src={coverPreview} alt="Cover preview" className="w-full h-32 object-cover rounded-lg" />
+                      ) : (
+                        <div className="py-4">
+                          <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground font-body">Click to upload cover image</p>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      id="cover-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleCoverUpload}
+                    />
+                  </div>
                   <Button type="submit" variant="gold" size="lg" className="w-full py-5">
                     Create Event
                   </Button>
@@ -218,6 +311,13 @@ const AdminDashboard = () => {
                             <ImageIcon className="w-4 h-4 mr-2" />
                             Guest View
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeleteEvent(event.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Event
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -227,6 +327,9 @@ const AdminDashboard = () => {
                         day: "numeric",
                         year: "numeric",
                       })}
+                    </p>
+                    <p className="text-xs text-gold font-body mt-1 flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> Password: {event.password}
                     </p>
                   </div>
                   <div className="flex gap-4 text-xs text-muted-foreground font-body mt-2">
