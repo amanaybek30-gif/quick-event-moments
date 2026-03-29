@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import { Calendar, MapPin } from "lucide-react";
-import heroImage from "@/assets/hero-event.jpg";
+import sampleGraduation from "@/assets/sample-graduation.jpg";
+import sampleConference from "@/assets/sample-conference.jpg";
+import sampleFestival from "@/assets/sample-festival.jpg";
 
 const SAMPLE_EVENTS = [
   {
@@ -8,7 +10,7 @@ const SAMPLE_EVENTS = [
     name: "Class of 2026 Graduation",
     date: "2026-06-15",
     location: "Grand Auditorium",
-    coverImage: heroImage,
+    coverImage: sampleGraduation,
     uploads: 342,
   },
   {
@@ -16,7 +18,7 @@ const SAMPLE_EVENTS = [
     name: "Tech Innovation Summit",
     date: "2026-04-20",
     location: "Convention Center",
-    coverImage: heroImage,
+    coverImage: sampleConference,
     uploads: 189,
   },
   {
@@ -24,7 +26,7 @@ const SAMPLE_EVENTS = [
     name: "Summer Music Festival",
     date: "2026-07-10",
     location: "Central Park",
-    coverImage: heroImage,
+    coverImage: sampleFestival,
     uploads: 578,
   },
 ];
@@ -71,6 +73,9 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
                   src={event.coverImage}
                   alt={event.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                  width={800}
+                  height={600}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
                 <div className="absolute bottom-3 left-3 right-3">

@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
+const ADMIN_EMAIL = "admin@vionevents.com";
+const ADMIN_PASSWORD = "0105Aman@aybek";
+
 const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -18,12 +21,12 @@ const AdminLogin = () => {
     setLoading(true);
 
     setTimeout(() => {
-      if (email && password) {
+      if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
         localStorage.setItem("mv_role", "admin");
         navigate("/admin");
         toast({ title: "Welcome back!", description: "You're now logged in." });
       } else {
-        toast({ title: "Error", description: "Please enter your credentials.", variant: "destructive" });
+        toast({ title: "Invalid credentials", description: "Please check your email and password.", variant: "destructive" });
       }
       setLoading(false);
     }, 800);
@@ -50,7 +53,7 @@ const AdminLogin = () => {
           <h1 className="text-3xl font-display font-bold text-foreground mb-2">
             Moment<span className="text-gold">ique</span>
           </h1>
-          <p className="text-muted-foreground font-body">Sign in to manage your events</p>
+          <p className="text-muted-foreground font-body">Admin sign in</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -89,8 +92,8 @@ const AdminLogin = () => {
           </Button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground mt-6 font-body">
-          Demo: Enter any email and password to access the dashboard
+        <p className="text-center text-xs text-muted-foreground mt-6 font-body">
+          Powered by <span className="font-semibold">VION Events</span>
         </p>
       </motion.div>
     </div>

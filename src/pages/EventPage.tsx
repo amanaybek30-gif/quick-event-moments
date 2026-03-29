@@ -1,14 +1,15 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Upload, Video, CheckCircle2, ArrowLeft, User } from "lucide-react";
+import { Camera, Upload, Video, CheckCircle2, ArrowLeft, User, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import MediaGallery from "@/components/MediaGallery";
-import heroImage from "@/assets/hero-event.jpg";
+import { getStoredEvents, type EventData } from "./AdminDashboard";
 
 type UploadState = "idle" | "uploading" | "success";
+type ViewState = "landing" | "upload" | "gallery" | "camera";
 
 interface CapturedMedia {
   id: string;
@@ -18,23 +19,53 @@ interface CapturedMedia {
   uploaderName: string;
 }
 
-const DEMO_EVENT = {
-  id: "demo",
-  name: "Class of 2026 Graduation",
-  date: "2026-06-15",
-  description: "Celebrate with us! Share your photos and videos.",
-  coverImage: heroImage,
-};
-
 const EventPage = () => {
   const { eventId } = useParams();
-  const [view, setView] = useState<"landing" | "upload" | "gallery">("landing");
+  const [view, setView] = useState<ViewState>("landing");
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [progress, setProgress] = useState(0);
   const [guestName, setGuestName] = useState("");
   const [capturedMedia, setCapturedMedia] = useState<CapturedMedia[]>([]);
+  const [event, setEvent] = useState<EventData | null>(null);
+  const [cameraMode, setCameraMode] = useState<"photo" | "video">("photo");
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const event = DEMO_EVENT;
+  useEffect(() => {
+    const events = getStoredEvents();
+    const found = events.find((e) => e.id === eventId);
+    if (found) setEvent(found);
+  }, [eventId]);
+
+  const processFile = useCallback((blob: Blob, type: "image" | "video") => {
+    setView("upload");
+    setUploadState("uploading");
+    setProgress(0);
+
+    const media: CapturedMedia = {
+      id: `capture-${Date.now()}`,
+      url: URL.createObjectURL(blob),
+      type,
+      uploadedAt: new Date().toISOString(),
+      uploaderName: guestName || "Guest",
+    };
+
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setCapturedMedia((existing) => [media, ...existing]);
+          setUploadState("success");
+          return 100;
+        }
+        return prev + Math.random() * 15 + 5;
+      });
+    }, 200);
+  }, [guestName]);
 
   const processFiles = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -43,7 +74,6 @@ const EventPage = () => {
     setUploadState("uploading");
     setProgress(0);
 
-    // Create preview URLs and add to gallery
     const newMedia: CapturedMedia[] = Array.from(files).map((file, i) => ({
       id: `capture-${Date.now()}-${i}`,
       url: URL.createObjectURL(file),
@@ -65,13 +95,79 @@ const EventPage = () => {
     }, 200);
   }, [guestName]);
 
-  const handleCapture = (type: "photo" | "video") => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = type === "photo" ? "image/*" : "video/*";
-    input.capture = "environment";
-    input.onchange = (e) => processFiles((e.target as HTMLInputElement).files);
-    input.click();
+  const openCamera = async (mode: "photo" | "video") => {
+    setCameraMode(mode);
+    setView("camera");
+    try {
+      const constraints: MediaStreamConstraints = {
+        video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: mode === "video",
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch {
+      // Fallback to file input if camera not available
+      stopCamera();
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = mode === "photo" ? "image/*" : "video/*";
+      input.capture = "environment";
+      input.onchange = (e) => processFiles((e.target as HTMLInputElement).files);
+      input.click();
+      setView("landing");
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const takePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        stopCamera();
+        processFile(blob, "image");
+      }
+    }, "image/jpeg", 0.9);
+  };
+
+  const startRecording = () => {
+    if (!streamRef.current) return;
+    chunksRef.current = [];
+    const recorder = new MediaRecorder(streamRef.current, { mimeType: "video/webm" });
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: "video/webm" });
+      stopCamera();
+      processFile(blob, "video");
+    };
+    recorder.start();
+    mediaRecorderRef.current = recorder;
+    setIsRecording(true);
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
   };
 
   const handleFileUpload = () => {
@@ -88,6 +184,65 @@ const EventPage = () => {
     setProgress(0);
     setView("landing");
   };
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground font-body">Event not found</p>
+      </div>
+    );
+  }
+
+  // Camera view
+  if (view === "camera") {
+    return (
+      <div className="min-h-screen bg-black flex flex-col">
+        <video
+          ref={videoRef}
+          className="flex-1 w-full object-cover"
+          autoPlay
+          playsInline
+          muted={cameraMode === "photo"}
+        />
+        <canvas ref={canvasRef} className="hidden" />
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+          <div className="flex items-center justify-center gap-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white"
+              onClick={() => { stopCamera(); setView("landing"); }}
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </Button>
+            {cameraMode === "photo" ? (
+              <button
+                onClick={takePhoto}
+                className="w-16 h-16 rounded-full border-4 border-white bg-white/20 active:bg-white/50 transition-colors"
+              />
+            ) : (
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`w-16 h-16 rounded-full border-4 border-white transition-colors flex items-center justify-center ${
+                  isRecording ? "bg-red-500" : "bg-red-500/60"
+                }`}
+              >
+                {isRecording && (
+                  <div className="w-6 h-6 rounded-sm bg-white" />
+                )}
+              </button>
+            )}
+            <div className="w-10" />
+          </div>
+          {isRecording && (
+            <p className="text-center text-red-400 text-sm font-body mt-2 animate-pulse">
+              ● Recording...
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (view === "gallery") {
     return (
@@ -198,7 +353,7 @@ const EventPage = () => {
                     variant="gold"
                     size="lg"
                     className="w-full text-lg py-6 flex-col h-auto gap-1"
-                    onClick={() => handleCapture("photo")}
+                    onClick={() => openCamera("photo")}
                   >
                     <Camera className="w-6 h-6" />
                     <span>Take Photo</span>
@@ -208,7 +363,7 @@ const EventPage = () => {
                     variant="gold"
                     size="lg"
                     className="w-full text-lg py-6 flex-col h-auto gap-1"
-                    onClick={() => handleCapture("video")}
+                    onClick={() => openCamera("video")}
                   >
                     <Video className="w-6 h-6" />
                     <span>Record Video</span>
@@ -224,21 +379,15 @@ const EventPage = () => {
                   <Upload className="w-5 h-5 mr-2" />
                   Upload from Device
                 </Button>
-              </motion.div>
 
-              {/* View Gallery Link */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mt-8 text-center"
-              >
                 <Button
-                  variant="link"
-                  className="text-gold font-body"
+                  variant="outline"
+                  size="lg"
+                  className="w-full text-lg py-6"
                   onClick={() => setView("gallery")}
                 >
-                  View Event Gallery →
+                  <Eye className="w-5 h-5 mr-2" />
+                  View Gallery
                 </Button>
               </motion.div>
 
