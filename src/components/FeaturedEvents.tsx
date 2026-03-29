@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Calendar, MapPin } from "lucide-react";
+import { getStoredEvents } from "@/pages/AdminDashboard";
 import sampleGraduation from "@/assets/sample-graduation.jpg";
 import sampleConference from "@/assets/sample-conference.jpg";
 import sampleFestival from "@/assets/sample-festival.jpg";
@@ -38,6 +39,27 @@ interface FeaturedEventsProps {
 const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
   if (!visible) return null;
 
+  // Merge admin-created events with samples
+  const storedEvents = getStoredEvents();
+  const adminEvents = storedEvents.map((e) => ({
+    id: e.id,
+    name: e.name,
+    date: e.date,
+    location: e.description || "Event Venue",
+    coverImage: e.coverImage,
+    uploads: e.uploads,
+  }));
+
+  // Use admin events if they exist, plus samples to fill
+  const allEvents = [...adminEvents];
+  // Add samples only if no admin events exist
+  if (allEvents.length === 0) {
+    allEvents.push(...SAMPLE_EVENTS);
+  }
+
+  // Show max 6
+  const displayEvents = allEvents.slice(0, 6);
+
   return (
     <section className="py-20 md:py-28 bg-muted/30">
       <div className="container mx-auto px-4">
@@ -59,7 +81,7 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {SAMPLE_EVENTS.map((event, i) => (
+          {displayEvents.map((event, i) => (
             <motion.div
               key={event.id}
               initial={{ opacity: 0, y: 20 }}
