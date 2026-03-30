@@ -1,64 +1,64 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, Lock, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { getStoredEvents } from "@/pages/AdminDashboard";
-import sampleGraduation from "@/assets/sample-graduation.jpg";
-import sampleConference from "@/assets/sample-conference.jpg";
-import sampleFestival from "@/assets/sample-festival.jpg";
-
-const SAMPLE_EVENTS = [
-  {
-    id: "graduation-2026",
-    name: "Class of 2026 Graduation",
-    date: "2026-06-15",
-    location: "Grand Auditorium",
-    coverImage: sampleGraduation,
-    uploads: 342,
-  },
-  {
-    id: "tech-summit",
-    name: "Tech Innovation Summit",
-    date: "2026-04-20",
-    location: "Convention Center",
-    coverImage: sampleConference,
-    uploads: 189,
-  },
-  {
-    id: "music-fest",
-    name: "Summer Music Festival",
-    date: "2026-07-10",
-    location: "Central Park",
-    coverImage: sampleFestival,
-    uploads: 578,
-  },
-];
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface FeaturedEventsProps {
   visible?: boolean;
 }
 
 const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedEventName, setSelectedEventName] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+
   if (!visible) return null;
 
-  // Merge admin-created events with samples
   const storedEvents = getStoredEvents();
-  const adminEvents = storedEvents.map((e) => ({
+  const displayEvents = storedEvents.slice(0, 6).map((e) => ({
     id: e.id,
     name: e.name,
     date: e.date,
     location: e.description || "Event Venue",
     coverImage: e.coverImage,
     uploads: e.uploads,
+    password: e.password,
   }));
 
-  // Use admin events if they exist, plus samples to fill
-  const allEvents = [...adminEvents];
-  // Add samples only if no admin events exist
-  if (allEvents.length === 0) {
-    allEvents.push(...SAMPLE_EVENTS);
-  }
+  if (displayEvents.length === 0) return null;
 
-  // Show max 6
-  const displayEvents = allEvents.slice(0, 6);
+  const handleEventClick = (eventId: string, eventName: string) => {
+    setSelectedEventId(eventId);
+    setSelectedEventName(eventName);
+    setPasswordInput("");
+    setPasswordDialogOpen(true);
+  };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEventId) return;
+    const event = storedEvents.find((ev) => ev.id === selectedEventId);
+    if (event && passwordInput === event.password) {
+      setPasswordDialogOpen(false);
+      sessionStorage.setItem(`organizer_auth_${selectedEventId}`, "true");
+      navigate(`/organizer/${selectedEventId}`);
+    } else {
+      toast({ title: "Wrong password", description: "Please try again.", variant: "destructive" });
+    }
+  };
 
   return (
     <section className="py-20 md:py-28 bg-muted/30">
@@ -96,8 +96,6 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
                   alt={event.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"
-                  width={800}
-                  height={600}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
                 <div className="absolute bottom-3 left-3 right-3">
@@ -110,25 +108,58 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
                 <h3 className="text-lg font-display font-semibold text-foreground mb-2">
                   {event.name}
                 </h3>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground font-body">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground font-body mb-3">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
-                    {new Date(event.date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
                     {event.location}
                   </span>
                 </div>
+                <Button
+                  variant="gold-outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => handleEventClick(event.id, event.name)}
+                >
+                  <Eye className="w-4 h-4 mr-1.5" /> View Event
+                </Button>
               </div>
             </motion.div>
           ))}
         </div>
       </div>
+
+      {/* Password Dialog */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl text-center">{selectedEventName}</DialogTitle>
+          </DialogHeader>
+          <p className="text-center text-muted-foreground font-body text-sm mb-2">
+            Enter the event password to access
+          </p>
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="password"
+                placeholder="Event password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className="pl-10 h-12 font-body"
+                required
+                autoFocus
+              />
+            </div>
+            <Button type="submit" variant="gold" size="lg" className="w-full py-5">
+              Access Event
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };

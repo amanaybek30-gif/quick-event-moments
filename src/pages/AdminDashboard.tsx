@@ -11,6 +11,8 @@ import {
   Upload,
   Trash2,
   Lock,
+  ArrowLeft,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +33,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import sampleGraduation from "@/assets/sample-graduation.jpg";
 import sampleConference from "@/assets/sample-conference.jpg";
+import sampleFestival from "@/assets/sample-festival.jpg";
 
 export interface EventData {
   id: string;
@@ -41,11 +44,12 @@ export interface EventData {
   uploads: number;
   contributors: number;
   password: string;
+  welcomeMessage?: string;
 }
 
 const INITIAL_EVENTS: EventData[] = [
   {
-    id: "demo",
+    id: "demo-graduation",
     name: "Class of 2026 Graduation",
     date: "2026-06-15",
     description: "Annual graduation ceremony",
@@ -53,9 +57,10 @@ const INITIAL_EVENTS: EventData[] = [
     uploads: 47,
     contributors: 23,
     password: "grad2026",
+    welcomeMessage: "Welcome to the Class of 2026 Graduation! 🎓 Capture and share your favorite moments.",
   },
   {
-    id: "conf-2026",
+    id: "demo-conference",
     name: "Tech Summit 2026",
     date: "2026-09-20",
     description: "Annual technology conference",
@@ -63,10 +68,21 @@ const INITIAL_EVENTS: EventData[] = [
     uploads: 128,
     contributors: 64,
     password: "tech2026",
+    welcomeMessage: "Welcome to Tech Summit 2026! 🚀 Share the innovation.",
+  },
+  {
+    id: "demo-festival",
+    name: "Summer Music Festival",
+    date: "2026-07-10",
+    description: "Outdoor music festival",
+    coverImage: sampleFestival,
+    uploads: 89,
+    contributors: 45,
+    password: "music2026",
+    welcomeMessage: "Welcome to the Summer Music Festival! 🎶 Let's make memories.",
   },
 ];
 
-// Shared event store so other pages can access events
 const EVENT_STORAGE_KEY = "momentique_events";
 
 export const getStoredEvents = (): EventData[] => {
@@ -90,9 +106,8 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const [events, setEvents] = useState<EventData[]>(() => getStoredEvents());
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [newEvent, setNewEvent] = useState({ name: "", date: "", description: "", password: "" });
+  const [newEvent, setNewEvent] = useState({ name: "", date: "", description: "", password: "", welcomeMessage: "" });
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [coverFile, setCoverFile] = useState<File | null>(null);
 
   useEffect(() => {
     const role = localStorage.getItem("mv_role");
@@ -110,8 +125,11 @@ const AdminDashboard = () => {
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setCoverFile(file);
-      setCoverPreview(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -121,20 +139,24 @@ const AdminDashboard = () => {
       toast({ title: "Password required", description: "Set a password for organizer access.", variant: "destructive" });
       return;
     }
+    if (!coverPreview) {
+      toast({ title: "Cover image required", description: "Please upload a cover image.", variant: "destructive" });
+      return;
+    }
     const event: EventData = {
       id: `evt-${Date.now()}`,
       name: newEvent.name,
       date: newEvent.date,
       description: newEvent.description,
-      coverImage: coverPreview || sampleGraduation,
+      coverImage: coverPreview,
       uploads: 0,
       contributors: 0,
       password: newEvent.password,
+      welcomeMessage: newEvent.welcomeMessage || undefined,
     };
     setEvents([event, ...events]);
-    setNewEvent({ name: "", date: "", description: "", password: "" });
+    setNewEvent({ name: "", date: "", description: "", password: "", welcomeMessage: "" });
     setCoverPreview(null);
-    setCoverFile(null);
     setDialogOpen(false);
     toast({ title: "Event created!", description: `"${event.name}" is ready. Password: ${event.password}` });
   };
@@ -151,12 +173,16 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-display font-bold text-foreground">
-            Moment<span className="text-gold">ique</span>
-          </h1>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-xl font-display font-bold text-foreground">
+              Moment<span className="text-gold">ique</span>
+            </h1>
+          </div>
           <div className="flex items-center gap-2">
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
@@ -165,7 +191,7 @@ const AdminDashboard = () => {
                   New Event
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle className="font-display text-xl">Create New Event</DialogTitle>
                 </DialogHeader>
@@ -200,9 +226,18 @@ const AdminDashboard = () => {
                       required
                     />
                   </div>
+                  <div className="relative">
+                    <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Textarea
+                      placeholder="Welcome message for guests (optional)"
+                      value={newEvent.welcomeMessage}
+                      onChange={(e) => setNewEvent({ ...newEvent, welcomeMessage: e.target.value })}
+                      className="pl-10 font-body"
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-body text-muted-foreground mb-2">
-                      Cover Image
+                      Cover Image <span className="text-destructive">*</span>
                     </label>
                     <div
                       className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-gold/50 transition-colors"
@@ -239,7 +274,6 @@ const AdminDashboard = () => {
       </header>
 
       <div className="container mx-auto px-4 py-6">
-        {/* Stats */}
         <div className="grid grid-cols-2 gap-4 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -270,7 +304,6 @@ const AdminDashboard = () => {
           </motion.div>
         </div>
 
-        {/* Events */}
         <h2 className="text-lg font-display font-semibold text-foreground mb-4">Your Events</h2>
         <div className="space-y-4">
           {events.map((event, index) => (
