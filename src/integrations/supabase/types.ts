@@ -14,7 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      event_media: {
+        Row: {
+          event_id: string
+          file_url: string
+          id: string
+          type: string
+          uploaded_at: string
+          uploader_name: string | null
+        }
+        Insert: {
+          event_id: string
+          file_url: string
+          id: string
+          type: string
+          uploaded_at?: string
+          uploader_name?: string | null
+        }
+        Update: {
+          event_id?: string
+          file_url?: string
+          id?: string
+          type?: string
+          uploaded_at?: string
+          uploader_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_media_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          contributors: number | null
+          cover_image: string | null
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          name: string
+          password: string
+          uploads: number | null
+          welcome_message: string | null
+        }
+        Insert: {
+          contributors?: number | null
+          cover_image?: string | null
+          created_at?: string
+          date: string
+          description?: string | null
+          id: string
+          name: string
+          password: string
+          uploads?: number | null
+          welcome_message?: string | null
+        }
+        Update: {
+          contributors?: number | null
+          cover_image?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          name?: string
+          password?: string
+          uploads?: number | null
+          welcome_message?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
