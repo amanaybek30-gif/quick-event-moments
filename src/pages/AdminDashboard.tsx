@@ -31,139 +31,107 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import sampleGraduation from "@/assets/sample-graduation.jpg";
-import sampleConference from "@/assets/sample-conference.jpg";
-import sampleFestival from "@/assets/sample-festival.jpg";
-
-export interface EventData {
-  id: string;
-  name: string;
-  date: string;
-  description: string;
-  coverImage: string;
-  uploads: number;
-  contributors: number;
-  password: string;
-  welcomeMessage?: string;
-}
-
-const INITIAL_EVENTS: EventData[] = [
-  {
-    id: "demo-graduation",
-    name: "Class of 2026 Graduation",
-    date: "2026-06-15",
-    description: "Annual graduation ceremony",
-    coverImage: sampleGraduation,
-    uploads: 47,
-    contributors: 23,
-    password: "grad2026",
-    welcomeMessage: "Welcome to the Class of 2026 Graduation! 🎓 Capture and share your favorite moments.",
-  },
-  {
-    id: "demo-conference",
-    name: "Tech Summit 2026",
-    date: "2026-09-20",
-    description: "Annual technology conference",
-    coverImage: sampleConference,
-    uploads: 128,
-    contributors: 64,
-    password: "tech2026",
-    welcomeMessage: "Welcome to Tech Summit 2026! 🚀 Share the innovation.",
-  },
-  {
-    id: "demo-festival",
-    name: "Summer Music Festival",
-    date: "2026-07-10",
-    description: "Outdoor music festival",
-    coverImage: sampleFestival,
-    uploads: 89,
-    contributors: 45,
-    password: "music2026",
-    welcomeMessage: "Welcome to the Summer Music Festival! 🎶 Let's make memories.",
-  },
-];
-
-const EVENT_STORAGE_KEY = "momentique_events";
-
-export const getStoredEvents = (): EventData[] => {
-  const stored = localStorage.getItem(EVENT_STORAGE_KEY);
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return INITIAL_EVENTS;
-    }
-  }
-  return INITIAL_EVENTS;
-};
-
-export const storeEvents = (events: EventData[]) => {
-  localStorage.setItem(EVENT_STORAGE_KEY, JSON.stringify(events));
-};
+import {
+  fetchAllEvents,
+  createEvent,
+  deleteEvent,
+  uploadCoverImage,
+  type EventData,
+} from "@/lib/eventService";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [events, setEvents] = useState<EventData[]>(() => getStoredEvents());
+  const [events, setEvents] = useState<EventData[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({ name: "", date: "", description: "", password: "", welcomeMessage: "" });
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     const role = localStorage.getItem("mv_role");
     if (role !== "admin") {
       navigate("/admin/login");
+      return;
     }
+    loadEvents();
   }, [navigate]);
 
-  useEffect(() => {
-    storeEvents(events);
-  }, [events]);
+  const loadEvents = async () => {
+    setLoading(true);
+    const data = await fetchAllEvents();
+    setEvents(data);
+    setLoading(false);
+  };
 
   const totalUploads = events.reduce((sum, e) => sum + e.uploads, 0);
 
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setCoverFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setCoverPreview(reader.result as string);
-      };
+      reader.onloadend = () => setCoverPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const handleCreateEvent = (e: React.FormEvent) => {
+  const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEvent.password.trim()) {
       toast({ title: "Password required", description: "Set a password for organizer access.", variant: "destructive" });
       return;
     }
-    if (!coverPreview) {
+    if (!coverFile) {
       toast({ title: "Cover image required", description: "Please upload a cover image.", variant: "destructive" });
       return;
     }
-    const event: EventData = {
-      id: `evt-${Date.now()}`,
+
+    setCreating(true);
+    const eventId = `evt-${Date.now()}`;
+
+    // Upload cover image to storage
+    const coverUrl = await uploadCoverImage(eventId, coverFile);
+    if (!coverUrl) {
+      toast({ title: "Upload failed", description: "Could not upload cover image.", variant: "destructive" });
+      setCreating(false);
+      return;
+    }
+
+    const eventData: EventData = {
+      id: eventId,
       name: newEvent.name,
       date: newEvent.date,
       description: newEvent.description,
-      coverImage: coverPreview,
+      cover_image: coverUrl,
       uploads: 0,
       contributors: 0,
       password: newEvent.password,
-      welcomeMessage: newEvent.welcomeMessage || undefined,
+      welcome_message: newEvent.welcomeMessage || null,
     };
-    setEvents([event, ...events]);
-    setNewEvent({ name: "", date: "", description: "", password: "", welcomeMessage: "" });
-    setCoverPreview(null);
-    setDialogOpen(false);
-    toast({ title: "Event created!", description: `"${event.name}" is ready. Password: ${event.password}` });
+
+    const success = await createEvent(eventData);
+    if (success) {
+      setEvents([eventData, ...events]);
+      setNewEvent({ name: "", date: "", description: "", password: "", welcomeMessage: "" });
+      setCoverFile(null);
+      setCoverPreview(null);
+      setDialogOpen(false);
+      toast({ title: "Event created!", description: `"${eventData.name}" is ready. Password: ${eventData.password}` });
+    } else {
+      toast({ title: "Error", description: "Could not create event.", variant: "destructive" });
+    }
+    setCreating(false);
   };
 
-  const handleDeleteEvent = (eventId: string) => {
-    setEvents(events.filter((e) => e.id !== eventId));
-    toast({ title: "Event deleted" });
+  const handleDeleteEvent = async (eventId: string) => {
+    const success = await deleteEvent(eventId);
+    if (success) {
+      setEvents(events.filter((e) => e.id !== eventId));
+      toast({ title: "Event deleted" });
+    }
   };
 
   const handleLogout = () => {
@@ -196,53 +164,22 @@ const AdminDashboard = () => {
                   <DialogTitle className="font-display text-xl">Create New Event</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleCreateEvent} className="space-y-4 mt-2">
-                  <Input
-                    placeholder="Event name"
-                    value={newEvent.name}
-                    onChange={(e) => setNewEvent({ ...newEvent, name: e.target.value })}
-                    className="h-12 font-body"
-                    required
-                  />
-                  <Input
-                    type="date"
-                    value={newEvent.date}
-                    onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                    className="h-12 font-body"
-                    required
-                  />
-                  <Textarea
-                    placeholder="Description (optional)"
-                    value={newEvent.description}
-                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                    className="font-body"
-                  />
+                  <Input placeholder="Event name" value={newEvent.name} onChange={(e) => setNewEvent({ ...newEvent, name: e.target.value })} className="h-12 font-body" required />
+                  <Input type="date" value={newEvent.date} onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })} className="h-12 font-body" required />
+                  <Textarea placeholder="Description (optional)" value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })} className="font-body" />
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Event password (for organizers)"
-                      value={newEvent.password}
-                      onChange={(e) => setNewEvent({ ...newEvent, password: e.target.value })}
-                      className="pl-10 h-12 font-body"
-                      required
-                    />
+                    <Input placeholder="Event password (for organizers)" value={newEvent.password} onChange={(e) => setNewEvent({ ...newEvent, password: e.target.value })} className="pl-10 h-12 font-body" required />
                   </div>
                   <div className="relative">
                     <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Textarea
-                      placeholder="Welcome message for guests (optional)"
-                      value={newEvent.welcomeMessage}
-                      onChange={(e) => setNewEvent({ ...newEvent, welcomeMessage: e.target.value })}
-                      className="pl-10 font-body"
-                    />
+                    <Textarea placeholder="Welcome message for guests (optional)" value={newEvent.welcomeMessage} onChange={(e) => setNewEvent({ ...newEvent, welcomeMessage: e.target.value })} className="pl-10 font-body" />
                   </div>
                   <div>
                     <label className="block text-sm font-body text-muted-foreground mb-2">
                       Cover Image <span className="text-destructive">*</span>
                     </label>
-                    <div
-                      className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-gold/50 transition-colors"
-                      onClick={() => document.getElementById("cover-upload")?.click()}
-                    >
+                    <div className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-gold/50 transition-colors" onClick={() => document.getElementById("cover-upload")?.click()}>
                       {coverPreview ? (
                         <img src={coverPreview} alt="Cover preview" className="w-full h-32 object-cover rounded-lg" />
                       ) : (
@@ -252,16 +189,10 @@ const AdminDashboard = () => {
                         </div>
                       )}
                     </div>
-                    <input
-                      id="cover-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleCoverUpload}
-                    />
+                    <input id="cover-upload" type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
                   </div>
-                  <Button type="submit" variant="gold" size="lg" className="w-full py-5">
-                    Create Event
+                  <Button type="submit" variant="gold" size="lg" className="w-full py-5" disabled={creating}>
+                    {creating ? "Creating..." : "Create Event"}
                   </Button>
                 </form>
               </DialogContent>
@@ -275,11 +206,7 @@ const AdminDashboard = () => {
 
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-2 gap-4 mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-card rounded-xl border border-border p-5"
-          >
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl border border-border p-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-9 h-9 rounded-lg gold-gradient flex items-center justify-center">
                 <CalendarDays className="w-4 h-4 text-primary-foreground" />
@@ -288,12 +215,7 @@ const AdminDashboard = () => {
             <p className="text-2xl font-display font-bold text-foreground">{events.length}</p>
             <p className="text-sm text-muted-foreground font-body">Total Events</p>
           </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-card rounded-xl border border-border p-5"
-          >
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-card rounded-xl border border-border p-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-9 h-9 rounded-lg gold-gradient flex items-center justify-center">
                 <Upload className="w-4 h-4 text-primary-foreground" />
@@ -305,79 +227,62 @@ const AdminDashboard = () => {
         </div>
 
         <h2 className="text-lg font-display font-semibold text-foreground mb-4">Your Events</h2>
-        <div className="space-y-4">
-          {events.map((event, index) => (
-            <motion.div
-              key={event.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.08 }}
-              className="bg-card rounded-xl border border-border overflow-hidden hover:border-gold/30 transition-colors"
-            >
-              <div className="flex">
-                <div className="w-24 h-24 md:w-32 md:h-32 shrink-0">
-                  <img
-                    src={event.coverImage}
-                    alt={event.name}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-display font-semibold text-foreground truncate">
-                        {event.name}
-                      </h3>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="shrink-0 -mr-2 -mt-1 h-8 w-8">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => navigate(`/organizer/${event.id}`)}>
-                            <Eye className="w-4 h-4 mr-2" />
-                            Manage Event
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate(`/event/${event.id}`)}>
-                            <ImageIcon className="w-4 h-4 mr-2" />
-                            Guest View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDeleteEvent(event.id)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Event
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+        {loading ? (
+          <p className="text-muted-foreground font-body text-center py-8">Loading events...</p>
+        ) : (
+          <div className="space-y-4">
+            {events.map((event, index) => (
+              <motion.div key={event.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }} className="bg-card rounded-xl border border-border overflow-hidden hover:border-gold/30 transition-colors">
+                <div className="flex">
+                  <div className="w-24 h-24 md:w-32 md:h-32 shrink-0">
+                    {event.cover_image ? (
+                      <img src={event.cover_image} alt={event.name} className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-display font-semibold text-foreground truncate">{event.name}</h3>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="shrink-0 -mr-2 -mt-1 h-8 w-8">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => navigate(`/organizer/${event.id}`)}>
+                              <Eye className="w-4 h-4 mr-2" /> Manage Event
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/event/${event.id}`)}>
+                              <ImageIcon className="w-4 h-4 mr-2" /> Guest View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteEvent(event.id)}>
+                              <Trash2 className="w-4 h-4 mr-2" /> Delete Event
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <p className="text-sm text-muted-foreground font-body">
+                        {new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                      <p className="text-xs text-gold font-body mt-1 flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Password: {event.password}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground font-body">
-                      {new Date(event.date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
-                    <p className="text-xs text-gold font-body mt-1 flex items-center gap-1">
-                      <Lock className="w-3 h-3" /> Password: {event.password}
-                    </p>
-                  </div>
-                  <div className="flex gap-4 text-xs text-muted-foreground font-body mt-2">
-                    <span className="flex items-center gap-1">
-                      <Upload className="w-3 h-3" /> {event.uploads} uploads
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <ImageIcon className="w-3 h-3" /> {event.contributors} contributors
-                    </span>
+                    <div className="flex gap-4 text-xs text-muted-foreground font-body mt-2">
+                      <span className="flex items-center gap-1"><Upload className="w-3 h-3" /> {event.uploads} uploads</span>
+                      <span className="flex items-center gap-1"><ImageIcon className="w-3 h-3" /> {event.contributors} contributors</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

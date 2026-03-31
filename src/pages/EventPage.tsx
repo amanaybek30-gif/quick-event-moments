@@ -1,11 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Upload, Video, ArrowLeft, User, Eye, RotateCcw, Check, X } from "lucide-react";
+import { Camera, Upload, Video, ArrowLeft, User, Eye, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getStoredEvents, type EventData } from "./AdminDashboard";
-import { getEventMedia, addMediaToEvent, blobToDataUrl, type StoredMedia } from "@/lib/mediaStore";
+import {
+  fetchEventById,
+  fetchEventMedia,
+  uploadMedia,
+  type EventData,
+  type MediaItem,
+} from "@/lib/eventService";
 import MediaGallery from "@/components/MediaGallery";
 
 type ViewState = "landing" | "camera" | "review" | "gallery";
@@ -17,6 +22,7 @@ const EventPage = () => {
   const [guestName, setGuestName] = useState("");
   const [capturedCount, setCapturedCount] = useState(0);
   const [event, setEvent] = useState<EventData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [cameraMode, setCameraMode] = useState<"photo" | "video">("photo");
   const [showWelcome, setShowWelcome] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -28,47 +34,41 @@ const EventPage = () => {
   const [reviewBlob, setReviewBlob] = useState<Blob | null>(null);
   const [reviewUrl, setReviewUrl] = useState<string | null>(null);
   const [reviewType, setReviewType] = useState<"image" | "video">("image");
-  const [mediaItems, setMediaItems] = useState<StoredMedia[]>([]);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const events = getStoredEvents();
-    const found = events.find((e) => e.id === eventId);
-    if (found) {
-      setEvent(found);
-      // Show welcome message if set
-      if (found.welcomeMessage) {
-        const welcomeKey = `momentique_welcome_${eventId}`;
-        if (!sessionStorage.getItem(welcomeKey)) {
-          setShowWelcome(true);
-          sessionStorage.setItem(welcomeKey, "true");
+    if (!eventId) return;
+    const load = async () => {
+      setLoading(true);
+      const found = await fetchEventById(eventId);
+      if (found) {
+        setEvent(found);
+        if (found.welcome_message) {
+          const welcomeKey = `momentique_welcome_${eventId}`;
+          if (!sessionStorage.getItem(welcomeKey)) {
+            setShowWelcome(true);
+            sessionStorage.setItem(welcomeKey, "true");
+          }
         }
+        const media = await fetchEventMedia(eventId);
+        setMediaItems(media);
+        setCapturedCount(media.length);
       }
-    }
-    // Load persisted media
-    if (eventId) {
-      const stored = getEventMedia(eventId);
-      setMediaItems(stored);
-      setCapturedCount(stored.length);
-    }
+      setLoading(false);
+    };
+    load();
   }, [eventId]);
 
   const persistMedia = useCallback(async (blob: Blob, type: "image" | "video") => {
     if (!eventId) return;
-    try {
-      const dataUrl = await blobToDataUrl(blob);
-      const item: StoredMedia = {
-        id: `capture-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        dataUrl,
-        type,
-        uploadedAt: new Date().toISOString(),
-        uploaderName: guestName || "Guest",
-      };
-      addMediaToEvent(eventId, item);
+    setSaving(true);
+    const item = await uploadMedia(eventId, blob, type, guestName || "Guest");
+    if (item) {
       setMediaItems((prev) => [item, ...prev]);
       setCapturedCount((c) => c + 1);
-    } catch {
-      console.warn("Failed to save media");
     }
+    setSaving(false);
   }, [eventId, guestName]);
 
   const showReview = (blob: Blob, type: "image" | "video") => {
@@ -79,9 +79,7 @@ const EventPage = () => {
   };
 
   const handleDone = async () => {
-    if (reviewBlob) {
-      await persistMedia(reviewBlob, reviewType);
-    }
+    if (reviewBlob) await persistMedia(reviewBlob, reviewType);
     if (reviewUrl) URL.revokeObjectURL(reviewUrl);
     setReviewBlob(null);
     setReviewUrl(null);
@@ -125,9 +123,7 @@ const EventPage = () => {
       input.capture = "environment";
       input.onchange = (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) {
-          showReview(file, mode === "photo" ? "image" : "video");
-        }
+        if (file) showReview(file, mode === "photo" ? "image" : "video");
       };
       input.click();
       setView("landing");
@@ -151,10 +147,7 @@ const EventPage = () => {
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
     canvas.toBlob((blob) => {
-      if (blob) {
-        stopCamera();
-        showReview(blob, "image");
-      }
+      if (blob) { stopCamera(); showReview(blob, "image"); }
     }, "image/jpeg", 0.9);
   };
 
@@ -162,9 +155,7 @@ const EventPage = () => {
     if (!streamRef.current) return;
     chunksRef.current = [];
     const recorder = new MediaRecorder(streamRef.current, { mimeType: "video/webm" });
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: "video/webm" });
       stopCamera();
@@ -176,9 +167,7 @@ const EventPage = () => {
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
     setIsRecording(false);
   };
 
@@ -191,6 +180,14 @@ const EventPage = () => {
     input.click();
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground font-body">Loading event...</p>
+      </div>
+    );
+  }
+
   if (!event) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
@@ -202,42 +199,27 @@ const EventPage = () => {
     );
   }
 
-  // Welcome popup
-  const welcomePopup = showWelcome && event.welcomeMessage && (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 bg-foreground/80 flex items-center justify-center p-4"
-      onClick={() => setShowWelcome(false)}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-card rounded-2xl border border-border p-8 max-w-sm w-full text-center shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+  const welcomePopup = showWelcome && event.welcome_message && (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-foreground/80 flex items-center justify-center p-4" onClick={() => setShowWelcome(false)}>
+      <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-card rounded-2xl border border-border p-8 max-w-sm w-full text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="w-16 h-16 rounded-full gold-gradient flex items-center justify-center mx-auto mb-4">
           <span className="text-2xl">🎉</span>
         </div>
         <h2 className="text-xl font-display font-bold text-foreground mb-3">Welcome!</h2>
-        <p className="text-muted-foreground font-body mb-6">{event.welcomeMessage}</p>
-        <Button variant="gold" size="lg" className="w-full py-5" onClick={() => setShowWelcome(false)}>
-          Let's Go!
-        </Button>
+        <p className="text-muted-foreground font-body mb-6">{event.welcome_message}</p>
+        <Button variant="gold" size="lg" className="w-full py-5" onClick={() => setShowWelcome(false)}>Let's Go!</Button>
       </motion.div>
     </motion.div>
   );
 
-  // Convert stored media to gallery format
   const galleryMedia = mediaItems.map((m) => ({
     id: m.id,
-    url: m.dataUrl,
-    type: m.type,
-    uploadedAt: m.uploadedAt,
-    uploaderName: m.uploaderName,
+    url: m.file_url,
+    type: m.type as "image" | "video",
+    uploadedAt: m.uploaded_at,
+    uploaderName: m.uploader_name,
   }));
 
-  // Camera view
   if (view === "camera") {
     return (
       <div className="min-h-screen bg-black flex flex-col">
@@ -251,24 +233,18 @@ const EventPage = () => {
             {cameraMode === "photo" ? (
               <button onClick={takePhoto} className="w-16 h-16 rounded-full border-4 border-white bg-white/20 active:bg-white/50 transition-colors" />
             ) : (
-              <button
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`w-16 h-16 rounded-full border-4 border-white transition-colors flex items-center justify-center ${isRecording ? "bg-red-500" : "bg-red-500/60"}`}
-              >
+              <button onClick={isRecording ? stopRecording : startRecording} className={`w-16 h-16 rounded-full border-4 border-white transition-colors flex items-center justify-center ${isRecording ? "bg-red-500" : "bg-red-500/60"}`}>
                 {isRecording && <div className="w-6 h-6 rounded-sm bg-white" />}
               </button>
             )}
             <div className="w-10" />
           </div>
-          {isRecording && (
-            <p className="text-center text-red-400 text-sm font-body mt-2 animate-pulse">● Recording...</p>
-          )}
+          {isRecording && <p className="text-center text-red-400 text-sm font-body mt-2 animate-pulse">● Recording...</p>}
         </div>
       </div>
     );
   }
 
-  // Review view
   if (view === "review" && reviewUrl) {
     return (
       <div className="min-h-screen bg-black flex flex-col">
@@ -284,8 +260,8 @@ const EventPage = () => {
             <Button variant="outline" size="lg" className="flex-1 py-6 text-white border-white/30 bg-white/10 hover:bg-white/20" onClick={handleRetake}>
               <RotateCcw className="w-5 h-5 mr-2" /> Retake
             </Button>
-            <Button variant="gold" size="lg" className="flex-1 py-6" onClick={handleDone}>
-              <Check className="w-5 h-5 mr-2" /> Done
+            <Button variant="gold" size="lg" className="flex-1 py-6" onClick={handleDone} disabled={saving}>
+              <Check className="w-5 h-5 mr-2" /> {saving ? "Saving..." : "Done"}
             </Button>
           </div>
         </div>
@@ -293,7 +269,6 @@ const EventPage = () => {
     );
   }
 
-  // Gallery view
   if (view === "gallery") {
     return (
       <div className="min-h-screen bg-background">
@@ -315,23 +290,20 @@ const EventPage = () => {
     );
   }
 
-  // Landing / capture interface
   return (
     <div className="min-h-screen bg-background">
       {welcomePopup}
       <AnimatePresence mode="wait">
         <motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          {/* Cover */}
           <div className="relative h-56 md:h-72">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-4 left-4 z-10 text-white bg-black/30 hover:bg-black/50"
-              onClick={() => navigate("/")}
-            >
+            <Button variant="ghost" size="icon" className="absolute top-4 left-4 z-10 text-white bg-black/30 hover:bg-black/50" onClick={() => navigate("/")}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <img src={event.coverImage} alt={event.name} className="w-full h-full object-cover" />
+            {event.cover_image ? (
+              <img src={event.cover_image} alt={event.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-muted" />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
@@ -348,9 +320,7 @@ const EventPage = () => {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center mb-8">
               <h2 className="text-2xl font-display font-bold text-foreground mb-2">Capture the Moment ✨</h2>
               <p className="text-muted-foreground font-body">Take photos and videos to add to the event gallery</p>
-              {capturedCount > 0 && (
-                <p className="text-sm text-gold font-body mt-2">✓ {capturedCount} moment{capturedCount !== 1 ? "s" : ""} captured</p>
-              )}
+              {capturedCount > 0 && <p className="text-sm text-gold font-body mt-2">✓ {capturedCount} moment{capturedCount !== 1 ? "s" : ""} captured</p>}
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="mb-6">
@@ -363,12 +333,10 @@ const EventPage = () => {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <Button variant="gold" size="lg" className="w-full text-lg py-6 flex-col h-auto gap-1" onClick={() => openCamera("photo")}>
-                  <Camera className="w-6 h-6" />
-                  <span>Take Photo</span>
+                  <Camera className="w-6 h-6" /><span>Take Photo</span>
                 </Button>
                 <Button variant="gold" size="lg" className="w-full text-lg py-6 flex-col h-auto gap-1" onClick={() => openCamera("video")}>
-                  <Video className="w-6 h-6" />
-                  <span>Record Video</span>
+                  <Video className="w-6 h-6" /><span>Record Video</span>
                 </Button>
               </div>
               <Button variant="gold-outline" size="lg" className="w-full text-lg py-6" onClick={handleFileUpload}>
