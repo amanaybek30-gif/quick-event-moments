@@ -20,7 +20,7 @@ interface MediaGalleryProps {
   onDeleteMedia?: (mediaId: string) => void;
 }
 
-const MediaGallery = ({ showDownload = false, extraMedia = [], canDelete = false, onDeleteMedia }: MediaGalleryProps) => {
+const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: MediaGalleryProps) => {
   const [filter, setFilter] = useState<MediaType>("all");
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
 
