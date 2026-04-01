@@ -108,12 +108,11 @@ const Index = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="text-lg md:text-xl text-primary-foreground/80 mb-10 max-w-xl mx-auto font-body"
+              className="text-lg md:text-xl text-primary-foreground/80 max-w-xl mx-auto font-body"
             >
               The easiest way to collect crowd-sourced photos and videos
               from your events. One QR code, unlimited memories.
             </motion.p>
-
           </div>
         </div>
       </section>
