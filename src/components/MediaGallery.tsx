@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Filter, Image as ImageIcon, Video, X, Download, Trash2 } from "lucide-react";
+import { Filter, Image as ImageIcon, Video, X, Download, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type MediaType = "all" | "photos" | "videos";
@@ -20,7 +20,7 @@ interface MediaGalleryProps {
   onDeleteMedia?: (mediaId: string) => void;
 }
 
-const MediaGallery = ({ showDownload = false, extraMedia = [], canDelete = false, onDeleteMedia }: MediaGalleryProps) => {
+const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: MediaGalleryProps) => {
   const [filter, setFilter] = useState<MediaType>("all");
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
 
@@ -94,32 +94,74 @@ const MediaGallery = ({ showDownload = false, extraMedia = [], canDelete = false
 
       {/* Lightbox */}
       {selectedMedia && selectedItem && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-foreground/90 flex items-center justify-center p-4" onClick={() => setSelectedMedia(null)}>
-          <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setSelectedMedia(null)}>
-            <X className="w-6 h-6" />
-          </Button>
-          {showDownload && (
-            <a href={selectedItem.url} download className="absolute top-4 right-16" onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10">
-                <Download className="w-6 h-6" />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-foreground/95 flex flex-col" onClick={() => setSelectedMedia(null)}>
+          {/* Top bar */}
+          <div className="flex items-center justify-between p-3 z-10" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2">
+              {canDelete && onDeleteMedia && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-red-400 hover:bg-red-500/20"
+                  onClick={() => { onDeleteMedia(selectedItem.id); setSelectedMedia(null); }}
+                >
+                  <Trash2 className="w-5 h-5" />
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <a href={selectedItem.url} download onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10">
+                  <Download className="w-5 h-5" />
+                </Button>
+              </a>
+              <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setSelectedMedia(null)}>
+                <X className="w-5 h-5" />
               </Button>
-            </a>
-          )}
-          {canDelete && onDeleteMedia && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-4 left-4 text-red-400 hover:bg-red-500/20"
-              onClick={(e) => { e.stopPropagation(); onDeleteMedia(selectedItem.id); setSelectedMedia(null); }}
-            >
-              <Trash2 className="w-6 h-6" />
-            </Button>
-          )}
-          {selectedItem.type === "video" ? (
-            <video src={selectedItem.url} controls autoPlay className="max-w-full max-h-[85vh] rounded-lg" onClick={(e) => e.stopPropagation()} />
-          ) : (
-            <img src={selectedItem.url} alt="Full view" className="max-w-full max-h-[85vh] rounded-lg object-contain" />
-          )}
+            </div>
+          </div>
+
+          {/* Media */}
+          <div className="flex-1 flex items-center justify-center p-4 relative" onClick={() => setSelectedMedia(null)}>
+            {/* Nav arrows */}
+            {filtered.length > 1 && (
+              <>
+                <button
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-primary-foreground/20 flex items-center justify-center text-primary-foreground z-10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const idx = filtered.findIndex((m) => m.id === selectedMedia);
+                    const prev = idx > 0 ? idx - 1 : filtered.length - 1;
+                    setSelectedMedia(filtered[prev].id);
+                  }}
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-primary-foreground/20 flex items-center justify-center text-primary-foreground z-10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const idx = filtered.findIndex((m) => m.id === selectedMedia);
+                    const next = idx < filtered.length - 1 ? idx + 1 : 0;
+                    setSelectedMedia(filtered[next].id);
+                  }}
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
+            )}
+
+            {selectedItem.type === "video" ? (
+              <video src={selectedItem.url} controls autoPlay className="max-w-full max-h-[80vh] rounded-lg" onClick={(e) => e.stopPropagation()} />
+            ) : (
+              <img src={selectedItem.url} alt="Full view" className="max-w-full max-h-[80vh] rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
+            )}
+          </div>
+
+          {/* Bottom info */}
+          <div className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="text-primary-foreground/70 text-sm font-body">{selectedItem.uploaderName}</p>
+          </div>
         </motion.div>
       )}
     </div>

@@ -11,6 +11,7 @@ import {
   type EventData,
   type MediaItem,
 } from "@/lib/eventService";
+import { compressImage, compressVideo } from "@/lib/mediaCompression";
 import MediaGallery from "@/components/MediaGallery";
 
 type ViewState = "landing" | "camera" | "review" | "gallery";
@@ -63,10 +64,18 @@ const EventPage = () => {
   const persistMedia = useCallback(async (blob: Blob, type: "image" | "video") => {
     if (!eventId) return;
     setSaving(true);
-    const item = await uploadMedia(eventId, blob, type, guestName || "Guest");
-    if (item) {
-      setMediaItems((prev) => [item, ...prev]);
-      setCapturedCount((c) => c + 1);
+    try {
+      // Compress before uploading
+      const compressed = type === "image" 
+        ? await compressImage(blob) 
+        : await compressVideo(blob);
+      const item = await uploadMedia(eventId, compressed, type, guestName || "Guest");
+      if (item) {
+        setMediaItems((prev) => [item, ...prev]);
+        setCapturedCount((c) => c + 1);
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
     }
     setSaving(false);
   }, [eventId, guestName]);
@@ -284,7 +293,7 @@ const EventPage = () => {
           </div>
         </div>
         <div className="container mx-auto px-4 py-6">
-          <MediaGallery extraMedia={galleryMedia} />
+          <MediaGallery extraMedia={galleryMedia} showDownload />
         </div>
       </div>
     );
