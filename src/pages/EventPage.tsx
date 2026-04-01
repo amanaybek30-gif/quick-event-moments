@@ -280,7 +280,7 @@ const EventPage = () => {
 
   if (view === "gallery") {
     return (
-    <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3">
           <div className="container mx-auto flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setView("landing")}>
@@ -294,21 +294,6 @@ const EventPage = () => {
         </div>
         <div className="container mx-auto px-4 py-6">
           <MediaGallery extraMedia={galleryMedia} showDownload />
-        </div>
-      </div>
-        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3">
-          <div className="container mx-auto flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setView("landing")}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="font-display font-semibold text-foreground text-lg">{event.name}</h1>
-              <p className="text-sm text-muted-foreground font-body">Event Gallery</p>
-            </div>
-          </div>
-        </div>
-        <div className="container mx-auto px-4 py-6">
-          <MediaGallery extraMedia={galleryMedia} />
         </div>
       </div>
     );
