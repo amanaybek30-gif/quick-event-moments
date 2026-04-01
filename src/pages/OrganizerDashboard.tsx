@@ -139,7 +139,10 @@ const OrganizerDashboard = () => {
     );
   }
 
-  const eventUrl = `${window.location.origin}/event/${eventId}`;
+  const PRODUCTION_HOST = "momentique.vionevents.com";
+  const isProduction = window.location.hostname === PRODUCTION_HOST || window.location.hostname === "quick-event-moments.lovable.app";
+  const baseUrl = isProduction ? `https://${PRODUCTION_HOST}` : window.location.origin;
+  const eventUrl = `${baseUrl}/event/${eventId}`;
 
   const downloadQR = () => {
     const svgEl = document.getElementById("qr-code-svg");
