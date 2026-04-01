@@ -114,21 +114,6 @@ const Index = () => {
               from your events. One QR code, unlimited memories.
             </motion.p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-            >
-              <Button
-                variant="gold"
-                size="lg"
-                className="text-lg px-8 py-6"
-                onClick={() => navigate("/admin/login")}
-              >
-                Get Started Free
-              </Button>
-            </motion.div>
           </div>
         </div>
       </section>

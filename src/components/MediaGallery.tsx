@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Filter, Image as ImageIcon, Video, X, Download, Trash2 } from "lucide-react";
+import { Filter, Image as ImageIcon, Video, X, Download, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type MediaType = "all" | "photos" | "videos";
