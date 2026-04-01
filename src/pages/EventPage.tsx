@@ -64,10 +64,18 @@ const EventPage = () => {
   const persistMedia = useCallback(async (blob: Blob, type: "image" | "video") => {
     if (!eventId) return;
     setSaving(true);
-    const item = await uploadMedia(eventId, blob, type, guestName || "Guest");
-    if (item) {
-      setMediaItems((prev) => [item, ...prev]);
-      setCapturedCount((c) => c + 1);
+    try {
+      // Compress before uploading
+      const compressed = type === "image" 
+        ? await compressImage(blob) 
+        : await compressVideo(blob);
+      const item = await uploadMedia(eventId, compressed, type, guestName || "Guest");
+      if (item) {
+        setMediaItems((prev) => [item, ...prev]);
+        setCapturedCount((c) => c + 1);
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
     }
     setSaving(false);
   }, [eventId, guestName]);
