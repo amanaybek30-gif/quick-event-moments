@@ -11,6 +11,7 @@ import {
   type EventData,
   type MediaItem,
 } from "@/lib/eventService";
+import { compressImage, compressVideo } from "@/lib/mediaCompression";
 import MediaGallery from "@/components/MediaGallery";
 
 type ViewState = "landing" | "camera" | "review" | "gallery";
