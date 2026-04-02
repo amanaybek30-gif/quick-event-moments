@@ -148,7 +148,7 @@ const EventPage = () => {
     try {
       const constraints: MediaStreamConstraints = {
         video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: mode === "video",
+        audio: false,
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
