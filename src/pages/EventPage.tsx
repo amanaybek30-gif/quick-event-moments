@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Upload, Video, ArrowLeft, User, Eye, RotateCcw, Check } from "lucide-react";
+import { Camera, Upload, Video, ArrowLeft, User, Eye, SwitchCamera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,9 +12,10 @@ import {
   type MediaItem,
 } from "@/lib/eventService";
 import { compressImage, compressVideo } from "@/lib/mediaCompression";
+import { supabase } from "@/integrations/supabase/client";
 import MediaGallery from "@/components/MediaGallery";
 
-type ViewState = "landing" | "camera" | "review" | "gallery";
+type ViewState = "landing" | "camera" | "gallery";
 
 const EventPage = () => {
   const { eventId } = useParams();
@@ -32,12 +33,12 @@ const EventPage = () => {
   const chunksRef = useRef<Blob[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [reviewBlob, setReviewBlob] = useState<Blob | null>(null);
-  const [reviewUrl, setReviewUrl] = useState<string | null>(null);
-  const [reviewType, setReviewType] = useState<"image" | "video">("image");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [savingCount, setSavingCount] = useState(0);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [flashMessage, setFlashMessage] = useState<string | null>(null);
 
+  // Load event and media
   useEffect(() => {
     if (!eventId) return;
     const load = async () => {
@@ -61,45 +62,76 @@ const EventPage = () => {
     load();
   }, [eventId]);
 
+  // Realtime subscription for gallery sync across devices
+  useEffect(() => {
+    if (!eventId) return;
+    const channel = supabase
+      .channel(`event-media-${eventId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "event_media",
+          filter: `event_id=eq.${eventId}`,
+        },
+        (payload) => {
+          const newItem = payload.new as MediaItem;
+          setMediaItems((prev) => {
+            if (prev.some((m) => m.id === newItem.id)) return prev;
+            return [newItem, ...prev];
+          });
+          setCapturedCount((c) => c + 1);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "event_media",
+          filter: `event_id=eq.${eventId}`,
+        },
+        (payload) => {
+          const oldItem = payload.old as { id: string };
+          setMediaItems((prev) => prev.filter((m) => m.id !== oldItem.id));
+          setCapturedCount((c) => Math.max(0, c - 1));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [eventId]);
+
   const persistMedia = useCallback(async (blob: Blob, type: "image" | "video") => {
     if (!eventId) return;
-    setSaving(true);
+    setSavingCount((c) => c + 1);
     try {
-      // Compress before uploading
-      const compressed = type === "image" 
-        ? await compressImage(blob) 
+      const compressed = type === "image"
+        ? await compressImage(blob)
         : await compressVideo(blob);
       const item = await uploadMedia(eventId, compressed, type, guestName || "Guest");
       if (item) {
-        setMediaItems((prev) => [item, ...prev]);
+        // Realtime will handle adding to state, but add optimistically too
+        setMediaItems((prev) => {
+          if (prev.some((m) => m.id === item.id)) return prev;
+          return [item, ...prev];
+        });
         setCapturedCount((c) => c + 1);
+        showFlash(type === "image" ? "📸 Photo saved!" : "🎬 Video saved!");
       }
     } catch (err) {
       console.error("Upload failed:", err);
+      showFlash("Upload failed, try again");
     }
-    setSaving(false);
+    setSavingCount((c) => c - 1);
   }, [eventId, guestName]);
 
-  const showReview = (blob: Blob, type: "image" | "video") => {
-    setReviewBlob(blob);
-    setReviewUrl(URL.createObjectURL(blob));
-    setReviewType(type);
-    setView("review");
-  };
-
-  const handleDone = async () => {
-    if (reviewBlob) await persistMedia(reviewBlob, reviewType);
-    if (reviewUrl) URL.revokeObjectURL(reviewUrl);
-    setReviewBlob(null);
-    setReviewUrl(null);
-    setView("landing");
-  };
-
-  const handleRetake = () => {
-    if (reviewUrl) URL.revokeObjectURL(reviewUrl);
-    setReviewBlob(null);
-    setReviewUrl(null);
-    openCamera(reviewType === "image" ? "photo" : "video");
+  const showFlash = (msg: string) => {
+    setFlashMessage(msg);
+    setTimeout(() => setFlashMessage(null), 2000);
   };
 
   const processFiles = useCallback(async (files: FileList | null) => {
@@ -110,12 +142,12 @@ const EventPage = () => {
     }
   }, [persistMedia]);
 
-  const openCamera = async (mode: "photo" | "video") => {
-    setCameraMode(mode);
-    setView("camera");
+  const startCamera = async (mode: "photo" | "video", facing: "environment" | "user") => {
+    // Stop existing stream first
+    stopCamera();
     try {
       const constraints: MediaStreamConstraints = {
-        video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: mode === "video",
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -125,18 +157,28 @@ const EventPage = () => {
         videoRef.current.play();
       }
     } catch {
+      // Fallback to file input
       stopCamera();
       const input = document.createElement("input");
       input.type = "file";
       input.accept = mode === "photo" ? "image/*" : "video/*";
-      input.capture = "environment";
+      input.capture = facing === "user" ? "user" : "environment";
       input.onchange = (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) showReview(file, mode === "photo" ? "image" : "video");
+        if (file) {
+          const t = file.type.startsWith("video") ? "video" as const : "image" as const;
+          persistMedia(file, t);
+        }
       };
       input.click();
       setView("landing");
     }
+  };
+
+  const openCamera = async (mode: "photo" | "video") => {
+    setCameraMode(mode);
+    setView("camera");
+    await startCamera(mode, facingMode);
   };
 
   const stopCamera = () => {
@@ -154,10 +196,15 @@ const EventPage = () => {
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    // Mirror selfie
+    if (facingMode === "user") {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
     ctx.drawImage(video, 0, 0);
     canvas.toBlob((blob) => {
-      if (blob) { stopCamera(); showReview(blob, "image"); }
-    }, "image/jpeg", 0.9);
+      if (blob) persistMedia(blob, "image");
+    }, "image/jpeg", 0.92);
   };
 
   const startRecording = () => {
@@ -167,8 +214,7 @@ const EventPage = () => {
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: "video/webm" });
-      stopCamera();
-      showReview(blob, "video");
+      persistMedia(blob, "video");
     };
     recorder.start();
     mediaRecorderRef.current = recorder;
@@ -178,6 +224,20 @@ const EventPage = () => {
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
     setIsRecording(false);
+  };
+
+  const flipCamera = async () => {
+    const newFacing = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(newFacing);
+    await startCamera(cameraMode, newFacing);
+  };
+
+  const switchMode = async (mode: "photo" | "video") => {
+    if (mode === cameraMode) return;
+    if (isRecording) stopRecording();
+    setCameraMode(mode);
+    // Restart stream to add/remove audio track
+    await startCamera(mode, facingMode);
   };
 
   const handleFileUpload = () => {
@@ -231,48 +291,92 @@ const EventPage = () => {
 
   if (view === "camera") {
     return (
-      <div className="min-h-screen bg-black flex flex-col">
-        <video ref={videoRef} className="flex-1 w-full object-cover" autoPlay playsInline muted={cameraMode === "photo"} />
+      <div className="fixed inset-0 bg-black flex flex-col z-50">
+        <video
+          ref={videoRef}
+          className={`flex-1 w-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
+          autoPlay
+          playsInline
+          muted={cameraMode === "photo"}
+        />
         <canvas ref={canvasRef} className="hidden" />
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
-          <div className="flex items-center justify-center gap-6">
-            <Button variant="ghost" size="icon" className="text-white" onClick={() => { stopCamera(); setView("landing"); }}>
+
+        {/* Flash message */}
+        <AnimatePresence>
+          {flashMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-body z-20"
+            >
+              {flashMessage}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Saving indicator */}
+        {savingCount > 0 && (
+          <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-body z-20 animate-pulse">
+            Saving {savingCount}...
+          </div>
+        )}
+
+        {/* Bottom controls */}
+        <div className="absolute bottom-0 left-0 right-0 pb-8 pt-16 bg-gradient-to-t from-black/90 to-transparent">
+          {/* Mode switcher (Photo / Video) */}
+          <div className="flex items-center justify-center gap-6 mb-5">
+            <button
+              onClick={() => switchMode("photo")}
+              className={`text-sm font-body font-semibold uppercase tracking-wider transition-colors ${cameraMode === "photo" ? "text-yellow-400" : "text-white/60"}`}
+            >
+              Photo
+            </button>
+            <button
+              onClick={() => switchMode("video")}
+              className={`text-sm font-body font-semibold uppercase tracking-wider transition-colors ${cameraMode === "video" ? "text-yellow-400" : "text-white/60"}`}
+            >
+              Video
+            </button>
+          </div>
+
+          {/* Main controls row */}
+          <div className="flex items-center justify-between px-8">
+            {/* Back */}
+            <button
+              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white"
+              onClick={() => { stopCamera(); if (isRecording) stopRecording(); setView("landing"); }}
+            >
               <ArrowLeft className="w-6 h-6" />
-            </Button>
+            </button>
+
+            {/* Shutter */}
             {cameraMode === "photo" ? (
-              <button onClick={takePhoto} className="w-16 h-16 rounded-full border-4 border-white bg-white/20 active:bg-white/50 transition-colors" />
+              <button
+                onClick={takePhoto}
+                className="w-20 h-20 rounded-full border-4 border-white bg-white/20 active:bg-white/50 transition-all active:scale-95"
+              />
             ) : (
-              <button onClick={isRecording ? stopRecording : startRecording} className={`w-16 h-16 rounded-full border-4 border-white transition-colors flex items-center justify-center ${isRecording ? "bg-red-500" : "bg-red-500/60"}`}>
-                {isRecording && <div className="w-6 h-6 rounded-sm bg-white" />}
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`w-20 h-20 rounded-full border-4 border-white transition-all flex items-center justify-center ${isRecording ? "bg-red-500" : "bg-red-500/60"}`}
+              >
+                {isRecording && <div className="w-7 h-7 rounded-sm bg-white" />}
               </button>
             )}
-            <div className="w-10" />
-          </div>
-          {isRecording && <p className="text-center text-red-400 text-sm font-body mt-2 animate-pulse">● Recording...</p>}
-        </div>
-      </div>
-    );
-  }
 
-  if (view === "review" && reviewUrl) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col">
-        <div className="flex-1 flex items-center justify-center p-4">
-          {reviewType === "image" ? (
-            <img src={reviewUrl} alt="Review" className="max-w-full max-h-[70vh] rounded-xl object-contain" />
-          ) : (
-            <video src={reviewUrl} className="max-w-full max-h-[70vh] rounded-xl object-contain" controls autoPlay playsInline />
-          )}
-        </div>
-        <div className="p-6 bg-gradient-to-t from-black/90 to-transparent">
-          <div className="flex gap-4 max-w-md mx-auto">
-            <Button variant="outline" size="lg" className="flex-1 py-6 text-white border-white/30 bg-white/10 hover:bg-white/20" onClick={handleRetake}>
-              <RotateCcw className="w-5 h-5 mr-2" /> Retake
-            </Button>
-            <Button variant="gold" size="lg" className="flex-1 py-6" onClick={handleDone} disabled={saving}>
-              <Check className="w-5 h-5 mr-2" /> {saving ? "Saving..." : "Done"}
-            </Button>
+            {/* Flip camera */}
+            <button
+              className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white"
+              onClick={flipCamera}
+            >
+              <SwitchCamera className="w-6 h-6" />
+            </button>
           </div>
+
+          {isRecording && (
+            <p className="text-center text-red-400 text-sm font-body mt-3 animate-pulse">● Recording...</p>
+          )}
         </div>
       </div>
     );
@@ -340,14 +444,9 @@ const EventPage = () => {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="gold" size="lg" className="w-full text-lg py-6 flex-col h-auto gap-1" onClick={() => openCamera("photo")}>
-                  <Camera className="w-6 h-6" /><span>Take Photo</span>
-                </Button>
-                <Button variant="gold" size="lg" className="w-full text-lg py-6 flex-col h-auto gap-1" onClick={() => openCamera("video")}>
-                  <Video className="w-6 h-6" /><span>Record Video</span>
-                </Button>
-              </div>
+              <Button variant="gold" size="lg" className="w-full text-lg py-6 flex items-center justify-center gap-2" onClick={() => openCamera("photo")}>
+                <Camera className="w-6 h-6" /> Open Camera
+              </Button>
               <Button variant="gold-outline" size="lg" className="w-full text-lg py-6" onClick={handleFileUpload}>
                 <Upload className="w-5 h-5 mr-2" /> Upload from Device
               </Button>
