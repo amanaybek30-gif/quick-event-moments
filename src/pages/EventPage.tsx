@@ -147,7 +147,7 @@ const EventPage = () => {
     stopCamera();
     try {
       const constraints: MediaStreamConstraints = {
-        video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: { facingMode: facing },
         audio: false,
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -394,13 +394,23 @@ const EventPage = () => {
     return (
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3">
-          <div className="container mx-auto flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setView("landing")}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="font-display font-semibold text-foreground text-lg">{event.name}</h1>
-              <p className="text-sm text-muted-foreground font-body">Event Gallery</p>
+        <div className="container mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => setView("landing")}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div>
+                <h1 className="font-display font-semibold text-foreground text-lg">{event.name}</h1>
+                <p className="text-sm text-muted-foreground font-body">Event Gallery</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => openCamera("photo")}>
+                <Camera className="w-5 h-5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleFileUpload}>
+                <Upload className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         </div>
