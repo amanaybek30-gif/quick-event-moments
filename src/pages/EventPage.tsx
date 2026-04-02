@@ -148,7 +148,7 @@ const EventPage = () => {
     try {
       const constraints: MediaStreamConstraints = {
         video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: mode === "video",
+        audio: false,
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
@@ -207,12 +207,22 @@ const EventPage = () => {
     }, "image/jpeg", 0.92);
   };
 
-  const startRecording = () => {
+  const startRecording = async () => {
     if (!streamRef.current) return;
     chunksRef.current = [];
-    const recorder = new MediaRecorder(streamRef.current, { mimeType: "video/webm" });
+    // Combine video tracks with a fresh audio track so mic is only live while recording
+    const combinedStream = new MediaStream(streamRef.current.getVideoTracks());
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStream.getAudioTracks().forEach((t) => combinedStream.addTrack(t));
+    } catch {
+      // No mic permission – record without audio
+    }
+    const recorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     recorder.onstop = () => {
+      // Stop audio tracks immediately when recording ends
+      combinedStream.getAudioTracks().forEach((t) => t.stop());
       const blob = new Blob(chunksRef.current, { type: "video/webm" });
       persistMedia(blob, "video");
     };
@@ -236,8 +246,6 @@ const EventPage = () => {
     if (mode === cameraMode) return;
     if (isRecording) stopRecording();
     setCameraMode(mode);
-    // Restart stream to add/remove audio track
-    await startCamera(mode, facingMode);
   };
 
   const handleFileUpload = () => {
