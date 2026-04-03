@@ -136,10 +136,11 @@ const EventPage = () => {
 
   const processFiles = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    for (const file of Array.from(files)) {
+    const tasks = Array.from(files).map((file) => {
       const type = file.type.startsWith("video") ? "video" as const : "image" as const;
-      await persistMedia(file, type);
-    }
+      return persistMedia(file, type);
+    });
+    await Promise.all(tasks);
   }, [persistMedia]);
 
   const startCamera = async (mode: "photo" | "video", facing: "environment" | "user") => {
