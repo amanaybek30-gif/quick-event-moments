@@ -129,11 +129,17 @@ const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: Med
               )}
             </div>
             <div className="flex items-center gap-2">
-              <a href={selectedItem.url} download onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10">
-                  <Download className="w-5 h-5" />
-                </Button>
-              </a>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-primary-foreground hover:bg-primary-foreground/10"
+                onClick={() => {
+                  const ext = selectedItem.type === "video" ? "webm" : "jpg";
+                  saveToDevice(selectedItem.url, `momentique-${selectedItem.id}.${ext}`);
+                }}
+              >
+                <Save className="w-5 h-5" />
+              </Button>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setSelectedMedia(null)}>
                 <X className="w-5 h-5" />
               </Button>
