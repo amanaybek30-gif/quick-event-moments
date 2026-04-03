@@ -25,6 +25,24 @@ const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: Med
   const [filter, setFilter] = useState<MediaType>("all");
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
 
+  const saveToDevice = useCallback(async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      toast.success("Saved to device!");
+    } catch {
+      toast.error("Could not save, try again");
+    }
+  }, []);
+
   // Only show extra media (no demo placeholders)
   const allMedia = extraMedia;
 
