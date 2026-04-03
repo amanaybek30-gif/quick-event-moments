@@ -17,6 +17,48 @@ import MediaGallery from "@/components/MediaGallery";
 
 type ViewState = "landing" | "camera" | "gallery";
 
+const MAX_RECORDING_MS = 20 * 60 * 1000;
+
+const RECORDING_MIME_TYPES = [
+  "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+  "video/mp4",
+  "video/webm;codecs=vp8,opus",
+  "video/webm",
+] as const;
+
+const getPreferredRecordingMimeType = () => {
+  if (typeof MediaRecorder === "undefined") return "";
+
+  return RECORDING_MIME_TYPES.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? "";
+};
+
+const getCameraConstraints = (
+  mode: "photo" | "video",
+  facing: "environment" | "user",
+  fallback = false
+): MediaStreamConstraints => ({
+  video: fallback
+    ? { facingMode: facing }
+    : {
+        facingMode: facing,
+        width: { ideal: 1280, max: 1920 },
+        height: { ideal: 720, max: 1080 },
+        frameRate: { ideal: 30, max: 30 },
+      },
+  audio:
+    mode === "video"
+      ? fallback
+        ? true
+        : {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: { ideal: 2 },
+            sampleRate: { ideal: 48000 },
+          }
+      : false,
+});
+
 const EventPage = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
@@ -31,6 +73,7 @@ const EventPage = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordingTimeoutRef = useRef<number | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -61,6 +104,20 @@ const EventPage = () => {
     };
     load();
   }, [eventId]);
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimeoutRef.current) {
+        window.clearTimeout(recordingTimeoutRef.current);
+      }
+
+      if (mediaRecorderRef.current?.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
 
   // Realtime subscription for gallery sync across devices
   useEffect(() => {
@@ -143,19 +200,60 @@ const EventPage = () => {
     await Promise.all(tasks);
   }, [persistMedia]);
 
+  const stopRecording = useCallback(async () => {
+    const recorder = mediaRecorderRef.current;
+
+    if (recordingTimeoutRef.current) {
+      window.clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+
+    if (!recorder || recorder.state === "inactive") {
+      setIsRecording(false);
+      return;
+    }
+
+    setIsRecording(false);
+
+    await new Promise<void>((resolve) => {
+      recorder.addEventListener("stop", () => resolve(), { once: true });
+      recorder.stop();
+    });
+  }, []);
+
   const startCamera = async (mode: "photo" | "video", facing: "environment" | "user") => {
-    // Stop existing stream first
+    if (mediaRecorderRef.current?.state === "recording") {
+      await stopRecording();
+    }
+
     stopCamera();
+
     try {
-      const constraints: MediaStreamConstraints = {
-        video: { facingMode: facing },
-        audio: mode === "video", // enable mic for video mode
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      let stream: MediaStream;
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(getCameraConstraints(mode, facing));
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia(getCameraConstraints(mode, facing, true));
+      }
+
+      stream.getVideoTracks().forEach((track) => {
+        track.enabled = true;
+        track.contentHint = "motion";
+      });
+
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = true;
+        track.contentHint = "speech";
+      });
+
       streamRef.current = stream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
+        await videoRef.current.play().catch(() => undefined);
       }
     } catch {
       // Fallback to file input
@@ -183,6 +281,15 @@ const EventPage = () => {
   };
 
   const stopCamera = () => {
+    if (recordingTimeoutRef.current) {
+      window.clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -209,33 +316,71 @@ const EventPage = () => {
   };
 
   const startRecording = async () => {
-    if (!streamRef.current) return;
+    let activeStream = streamRef.current;
+
+    if (!activeStream) return;
+
+    if (activeStream.getAudioTracks().length === 0) {
+      await startCamera("video", facingMode);
+      activeStream = streamRef.current;
+    }
+
+    if (!activeStream || activeStream.getAudioTracks().length === 0) {
+      showFlash("Please allow microphone access for video audio");
+      return;
+    }
+
+    const mimeType = getPreferredRecordingMimeType();
+
     chunksRef.current = [];
-    // The stream already has audio tracks from startCamera (video mode requests audio)
-    const recorder = new MediaRecorder(streamRef.current, {
-      mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-        ? "video/webm;codecs=vp9,opus"
-        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-          ? "video/webm;codecs=vp8,opus"
-          : "video/webm",
-      videoBitsPerSecond: 8_000_000, // 8 Mbps for high quality
+
+    const recorder = new MediaRecorder(activeStream, {
+      ...(mimeType ? { mimeType } : {}),
+      videoBitsPerSecond: 6_000_000,
+      audioBitsPerSecond: 128_000,
     });
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-    recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
-      persistMedia(blob, "video");
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        chunksRef.current.push(e.data);
+      }
     };
-    recorder.start(1000); // collect data every second to avoid large buffering
+
+    recorder.onerror = (event) => {
+      console.error("Recording error:", event);
+      showFlash("Video recording failed, please try again");
+      setIsRecording(false);
+    };
+
+    recorder.onstop = () => {
+      const finalMimeType = mimeType || recorder.mimeType || "video/webm";
+      const blob = new Blob(chunksRef.current, { type: finalMimeType });
+
+      chunksRef.current = [];
+      mediaRecorderRef.current = null;
+
+      if (blob.size > 0) {
+        void persistMedia(blob, "video");
+      } else {
+        showFlash("Video could not be saved, please try again");
+      }
+    };
+
+    recorder.start();
     mediaRecorderRef.current = recorder;
     setIsRecording(true);
-  };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
-    setIsRecording(false);
+    recordingTimeoutRef.current = window.setTimeout(() => {
+      showFlash("20 minute limit reached — saving video");
+      void stopRecording();
+    }, MAX_RECORDING_MS);
   };
 
   const flipCamera = async () => {
+    if (isRecording) {
+      await stopRecording();
+    }
+
     const newFacing = facingMode === "environment" ? "user" : "environment";
     setFacingMode(newFacing);
     await startCamera(cameraMode, newFacing);
@@ -243,9 +388,12 @@ const EventPage = () => {
 
   const switchMode = async (mode: "photo" | "video") => {
     if (mode === cameraMode) return;
-    if (isRecording) stopRecording();
+
+    if (isRecording) {
+      await stopRecording();
+    }
+
     setCameraMode(mode);
-    // Restart camera to add/remove audio track
     await startCamera(mode, facingMode);
   };
 
@@ -306,7 +454,7 @@ const EventPage = () => {
           className={`flex-1 w-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
           autoPlay
           playsInline
-          muted={cameraMode === "photo"}
+          muted
         />
         <canvas ref={canvasRef} className="hidden" />
 
@@ -354,7 +502,14 @@ const EventPage = () => {
             {/* Back */}
             <button
               className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white"
-              onClick={() => { stopCamera(); if (isRecording) stopRecording(); setView("landing"); }}
+              onClick={async () => {
+                if (isRecording) {
+                  await stopRecording();
+                }
+
+                stopCamera();
+                setView("landing");
+              }}
             >
               <ArrowLeft className="w-6 h-6" />
             </button>
@@ -384,7 +539,7 @@ const EventPage = () => {
           </div>
 
           {isRecording && (
-            <p className="text-center text-red-400 text-sm font-body mt-3 animate-pulse">● Recording...</p>
+            <p className="text-center text-red-400 text-sm font-body mt-3 animate-pulse">● Recording... max 20 min</p>
           )}
         </div>
       </div>

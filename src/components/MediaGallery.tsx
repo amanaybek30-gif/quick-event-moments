@@ -21,6 +21,21 @@ interface MediaGalleryProps {
   onDeleteMedia?: (mediaId: string) => void;
 }
 
+const getFileExtensionFromUrl = (url: string, type: "image" | "video") => {
+  try {
+    const pathname = new URL(url).pathname;
+    const ext = pathname.split(".").pop()?.toLowerCase();
+
+    if (ext) {
+      return ext;
+    }
+  } catch {
+    // Fall through to sensible default.
+  }
+
+  return type === "video" ? "mp4" : "jpg";
+};
+
 const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: MediaGalleryProps) => {
   const [filter, setFilter] = useState<MediaType>("all");
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
@@ -134,7 +149,7 @@ const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: Med
                 size="icon"
                 className="text-primary-foreground hover:bg-primary-foreground/10"
                 onClick={() => {
-                  const ext = selectedItem.type === "video" ? "webm" : "jpg";
+                  const ext = getFileExtensionFromUrl(selectedItem.url, selectedItem.type);
                   saveToDevice(selectedItem.url, `momentique-${selectedItem.id}.${ext}`);
                 }}
               >
