@@ -114,6 +114,20 @@ export const fetchEventMedia = async (eventId: string): Promise<MediaItem[]> => 
   return (data || []) as MediaItem[];
 };
 
+const getUploadMimeType = (blob: Blob, type: "image" | "video") => {
+  const fallback = type === "image" ? "image/jpeg" : "video/webm";
+  return (blob.type || fallback).split(";")[0].toLowerCase();
+};
+
+const getUploadExtension = (mimeType: string, type: "image" | "video") => {
+  if (mimeType.includes("mp4")) return "mp4";
+  if (mimeType.includes("quicktime")) return "mov";
+  if (mimeType.includes("webm")) return "webm";
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("heic")) return "heic";
+  return type === "image" ? "jpg" : "webm";
+};
+
 export const uploadMedia = async (
   eventId: string,
   blob: Blob,
@@ -121,12 +135,13 @@ export const uploadMedia = async (
   uploaderName: string
 ): Promise<MediaItem | null> => {
   const id = `media-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  const ext = type === "image" ? "jpg" : "webm";
+  const mimeType = getUploadMimeType(blob, type);
+  const ext = getUploadExtension(mimeType, type);
   const path = `${eventId}/${id}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from("event-media")
-    .upload(path, blob, { contentType: type === "image" ? "image/jpeg" : "video/webm" });
+    .upload(path, blob, { contentType: mimeType });
   if (uploadError) {
     console.error("Media upload error:", uploadError);
     return null;
