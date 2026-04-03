@@ -149,7 +149,7 @@ const EventPage = () => {
     try {
       const constraints: MediaStreamConstraints = {
         video: { facingMode: facing },
-        audio: false,
+        audio: mode === "video", // enable mic for video mode
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
