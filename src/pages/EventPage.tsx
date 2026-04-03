@@ -245,6 +245,8 @@ const EventPage = () => {
     if (mode === cameraMode) return;
     if (isRecording) stopRecording();
     setCameraMode(mode);
+    // Restart camera to add/remove audio track
+    await startCamera(mode, facingMode);
   };
 
   const handleFileUpload = () => {
