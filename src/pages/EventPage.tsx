@@ -149,7 +149,7 @@ const EventPage = () => {
     try {
       const constraints: MediaStreamConstraints = {
         video: { facingMode: facing },
-        audio: false,
+        audio: mode === "video", // enable mic for video mode
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
@@ -211,23 +211,21 @@ const EventPage = () => {
   const startRecording = async () => {
     if (!streamRef.current) return;
     chunksRef.current = [];
-    // Combine video tracks with a fresh audio track so mic is only live while recording
-    const combinedStream = new MediaStream(streamRef.current.getVideoTracks());
-    try {
-      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioStream.getAudioTracks().forEach((t) => combinedStream.addTrack(t));
-    } catch {
-      // No mic permission – record without audio
-    }
-    const recorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
+    // The stream already has audio tracks from startCamera (video mode requests audio)
+    const recorder = new MediaRecorder(streamRef.current, {
+      mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+          ? "video/webm;codecs=vp8,opus"
+          : "video/webm",
+      videoBitsPerSecond: 8_000_000, // 8 Mbps for high quality
+    });
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     recorder.onstop = () => {
-      // Stop audio tracks immediately when recording ends
-      combinedStream.getAudioTracks().forEach((t) => t.stop());
-      const blob = new Blob(chunksRef.current, { type: "video/webm" });
+      const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
       persistMedia(blob, "video");
     };
-    recorder.start();
+    recorder.start(1000); // collect data every second to avoid large buffering
     mediaRecorderRef.current = recorder;
     setIsRecording(true);
   };
@@ -247,6 +245,8 @@ const EventPage = () => {
     if (mode === cameraMode) return;
     if (isRecording) stopRecording();
     setCameraMode(mode);
+    // Restart camera to add/remove audio track
+    await startCamera(mode, facingMode);
   };
 
   const handleFileUpload = () => {

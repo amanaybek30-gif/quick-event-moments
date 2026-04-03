@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Filter, Image as ImageIcon, Video, X, Download, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Filter, Image as ImageIcon, Video, X, Download, Trash2, ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type MediaType = "all" | "photos" | "videos";
 
@@ -23,6 +24,24 @@ interface MediaGalleryProps {
 const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: MediaGalleryProps) => {
   const [filter, setFilter] = useState<MediaType>("all");
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
+
+  const saveToDevice = useCallback(async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      toast.success("Saved to device!");
+    } catch {
+      toast.error("Could not save, try again");
+    }
+  }, []);
 
   // Only show extra media (no demo placeholders)
   const allMedia = extraMedia;
@@ -110,11 +129,17 @@ const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: Med
               )}
             </div>
             <div className="flex items-center gap-2">
-              <a href={selectedItem.url} download onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10">
-                  <Download className="w-5 h-5" />
-                </Button>
-              </a>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-primary-foreground hover:bg-primary-foreground/10"
+                onClick={() => {
+                  const ext = selectedItem.type === "video" ? "webm" : "jpg";
+                  saveToDevice(selectedItem.url, `momentique-${selectedItem.id}.${ext}`);
+                }}
+              >
+                <Save className="w-5 h-5" />
+              </Button>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setSelectedMedia(null)}>
                 <X className="w-5 h-5" />
               </Button>
