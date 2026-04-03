@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Filter, Image as ImageIcon, Video, X, Download, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Filter, Image as ImageIcon, Video, X, Download, Trash2, ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type MediaType = "all" | "photos" | "videos";
 
