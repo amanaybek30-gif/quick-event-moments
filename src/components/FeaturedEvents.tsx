@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { fetchAllEvents, type EventData } from "@/lib/eventService";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FeaturedEventsProps {
   visible?: boolean;
@@ -28,10 +29,18 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
 
   useEffect(() => {
     if (!visible) return;
-    fetchAllEvents().then((data) => {
+    const load = () => fetchAllEvents().then((data) => {
       setEvents(data);
       setLoading(false);
     });
+    load();
+
+    const channel = supabase
+      .channel("homepage-events")
+      .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => load())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [visible]);
 
   if (!visible) return null;
