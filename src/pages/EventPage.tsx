@@ -526,6 +526,7 @@ const EventPage = () => {
                 }
 
                 stopCamera();
+                exitFullscreen();
                 setView("landing");
               }}
             >
