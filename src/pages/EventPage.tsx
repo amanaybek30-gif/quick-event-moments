@@ -271,6 +271,7 @@ const EventPage = () => {
       };
       input.click();
       setView("landing");
+      exitFullscreen();
     }
   };
 
