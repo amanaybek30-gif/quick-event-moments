@@ -17,7 +17,7 @@ import MediaGallery from "@/components/MediaGallery";
 
 type ViewState = "landing" | "camera" | "gallery";
 
-const MAX_RECORDING_MS = 20 * 60 * 1000;
+const MAX_RECORDING_MS = 30 * 60 * 1000;
 
 const RECORDING_MIME_TYPES = [
   "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
