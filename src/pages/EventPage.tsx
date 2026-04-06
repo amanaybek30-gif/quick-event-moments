@@ -271,12 +271,31 @@ const EventPage = () => {
       };
       input.click();
       setView("landing");
+      exitFullscreen();
+    }
+  };
+
+  const requestFullscreen = () => {
+    const el = document.documentElement;
+    if (el.requestFullscreen) {
+      el.requestFullscreen().catch(() => undefined);
+    } else if ((el as any).webkitRequestFullscreen) {
+      (el as any).webkitRequestFullscreen();
+    }
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => undefined);
+    } else if ((document as any).webkitFullscreenElement) {
+      (document as any).webkitExitFullscreen?.();
     }
   };
 
   const openCamera = async (mode: "photo" | "video") => {
     setCameraMode(mode);
     setView("camera");
+    requestFullscreen();
     await startCamera(mode, facingMode);
   };
 
@@ -508,6 +527,7 @@ const EventPage = () => {
                 }
 
                 stopCamera();
+                exitFullscreen();
                 setView("landing");
               }}
             >
