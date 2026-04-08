@@ -390,7 +390,7 @@ const EventPage = () => {
     setIsRecording(true);
 
     recordingTimeoutRef.current = window.setTimeout(() => {
-      showFlash("20 minute limit reached — saving video");
+      showFlash("30 minute limit reached — saving video");
       void stopRecording();
     }, MAX_RECORDING_MS);
   };
@@ -559,7 +559,7 @@ const EventPage = () => {
           </div>
 
           {isRecording && (
-            <p className="text-center text-red-400 text-sm font-body mt-3 animate-pulse">● Recording... max 20 min</p>
+            <p className="text-center text-red-400 text-sm font-body mt-3 animate-pulse">● Recording... max 30 min</p>
           )}
         </div>
       </div>
