@@ -602,9 +602,9 @@ const EventPage = () => {
       {welcomePopup}
       <AnimatePresence mode="wait">
         <motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="relative h-56 md:h-72">
-            <Button variant="ghost" size="icon" className="absolute top-4 left-4 z-10 text-white bg-black/30 hover:bg-black/50" onClick={() => navigate("/")}>
-              <ArrowLeft className="w-5 h-5" />
+          <div className="relative h-44 md:h-72">
+            <Button variant="ghost" size="icon" className="absolute top-3 left-3 z-10 text-white bg-black/30 hover:bg-black/50 w-8 h-8 md:w-10 md:h-10" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
             </Button>
             {event.cover_image ? (
               <img src={event.cover_image} alt={event.name} className="w-full h-full object-cover" />
@@ -612,44 +612,44 @@ const EventPage = () => {
               <div className="w-full h-full bg-muted" />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-6">
+            <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-medium gold-gradient text-primary-foreground mb-3">Live Event</span>
-                <h1 className="text-2xl md:text-3xl font-display font-bold text-primary-foreground">{event.name}</h1>
-                <p className="text-primary-foreground/70 font-body text-sm mt-1">
+                <span className="inline-block px-2.5 py-0.5 md:px-3 md:py-1 rounded-full text-[10px] md:text-xs font-medium gold-gradient text-primary-foreground mb-2 md:mb-3">Live Event</span>
+                <h1 className="text-xl md:text-3xl font-display font-bold text-primary-foreground">{event.name}</h1>
+                <p className="text-primary-foreground/70 font-body text-xs md:text-sm mt-1">
                   {new Date(event.date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                 </p>
               </motion.div>
             </div>
           </div>
 
-          <div className="container mx-auto px-4 py-8 max-w-lg">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center mb-8">
-              <h2 className="text-2xl font-display font-bold text-foreground mb-2">Capture the Moment ✨</h2>
-              <p className="text-muted-foreground font-body">Take photos and videos to add to the event gallery</p>
-              {capturedCount > 0 && <p className="text-sm text-gold font-body mt-2">✓ {capturedCount} moment{capturedCount !== 1 ? "s" : ""} captured</p>}
+          <div className="container mx-auto px-4 py-5 md:py-8 max-w-lg">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center mb-5 md:mb-8">
+              <h2 className="text-lg md:text-2xl font-display font-bold text-foreground mb-1 md:mb-2">Capture the Moment ✨</h2>
+              <p className="text-sm md:text-base text-muted-foreground font-body">Take photos and videos to add to the event gallery</p>
+              {capturedCount > 0 && <p className="text-xs md:text-sm text-gold font-body mt-1.5">✓ {capturedCount} moment{capturedCount !== 1 ? "s" : ""} captured</p>}
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="mb-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="mb-4 md:mb-6">
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Your name (optional)" value={guestName} onChange={(e) => setGuestName(e.target.value)} className="pl-10 h-12 font-body" />
+                <Input placeholder="Your name (optional)" value={guestName} onChange={(e) => setGuestName(e.target.value)} className="pl-10 h-10 md:h-12 font-body text-sm" />
               </div>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-3">
-              <Button variant="gold" size="lg" className="w-full text-lg py-6 flex items-center justify-center gap-2" onClick={() => openCamera("photo")}>
-                <Camera className="w-6 h-6" /> Open Camera
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-2.5 md:space-y-3">
+              <Button variant="gold" size="lg" className="w-full text-sm md:text-lg py-5 md:py-6 flex items-center justify-center gap-2" onClick={() => openCamera("photo")}>
+                <Camera className="w-5 h-5 md:w-6 md:h-6" /> Open Camera
               </Button>
-              <Button variant="gold-outline" size="lg" className="w-full text-lg py-6" onClick={handleFileUpload}>
-                <Upload className="w-5 h-5 mr-2" /> Upload from Device
+              <Button variant="gold-outline" size="lg" className="w-full text-sm md:text-lg py-5 md:py-6" onClick={handleFileUpload}>
+                <Upload className="w-4 h-4 md:w-5 md:h-5 mr-2" /> Upload from Device
               </Button>
-              <Button variant="outline" size="lg" className="w-full text-lg py-6" onClick={() => setView("gallery")}>
-                <Eye className="w-5 h-5 mr-2" /> View Gallery {capturedCount > 0 && `(${capturedCount})`}
+              <Button variant="outline" size="lg" className="w-full text-sm md:text-lg py-5 md:py-6" onClick={() => setView("gallery")}>
+                <Eye className="w-4 h-4 md:w-5 md:h-5 mr-2" /> View Gallery {capturedCount > 0 && `(${capturedCount})`}
               </Button>
             </motion.div>
 
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="text-center text-xs text-muted-foreground mt-6 font-body">
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="text-center text-[10px] md:text-xs text-muted-foreground mt-5 md:mt-6 font-body">
               Powered by <span className="font-semibold">VION Events</span>
             </motion.p>
           </div>
