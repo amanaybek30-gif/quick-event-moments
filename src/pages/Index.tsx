@@ -224,10 +224,10 @@ const Index = () => {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-4xl font-display font-bold text-primary-foreground mb-4">
-              Ready to Capture Your Next Event?
+              Make Your Guests Part of the Story
             </h2>
             <p className="text-primary-foreground/80 text-lg max-w-2xl mx-auto font-body mb-10">
-              Let us help you create unforgettable memories. Reach out today and let's make your event extraordinary.
+              We'll set up Momentique for your event so every guest can capture and share the moments that matter — effortlessly.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
