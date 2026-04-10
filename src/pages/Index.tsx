@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import FeaturedEvents from "@/components/FeaturedEvents";
 import heroImage from "@/assets/hero-event.jpg";
+import contactBg from "@/assets/contact-bg.jpg";
+import { Mail, Phone } from "lucide-react";
 
 const features = [
   {
@@ -198,6 +200,57 @@ const Index = () => {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Contact Us */}
+      <section className="relative overflow-hidden py-20 md:py-28">
+        <div className="absolute inset-0">
+          <img
+            src={contactBg}
+            alt="Event venue ambiance"
+            className="w-full h-full object-cover blur-sm scale-105"
+            loading="lazy"
+            width={1920}
+            height={800}
+          />
+          <div className="absolute inset-0 bg-foreground/60" />
+        </div>
+
+        <div className="relative z-10 container mx-auto px-4 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl md:text-4xl font-display font-bold text-primary-foreground mb-4">
+              Ready to Capture Your Next Event?
+            </h2>
+            <p className="text-primary-foreground/80 text-lg max-w-2xl mx-auto font-body mb-10">
+              Let us help you create unforgettable memories. Reach out today and let's make your event extraordinary.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button
+                variant="gold"
+                size="lg"
+                className="gap-2 text-base"
+                onClick={() => window.location.href = "mailto:eventcoordinator@vionevents.com"}
+              >
+                <Mail className="w-5 h-5" />
+                Send Us an Email
+              </Button>
+              <Button
+                variant="gold-outline"
+                size="lg"
+                className="gap-2 text-base border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10"
+                onClick={() => window.location.href = "tel:+251944010908"}
+              >
+                <Phone className="w-5 h-5" />
+                +251 944 010 908
+              </Button>
+            </div>
+          </motion.div>
         </div>
       </section>
 
