@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import FeaturedEvents from "@/components/FeaturedEvents";
 import heroImage from "@/assets/hero-event.jpg";
+import contactBg from "@/assets/contact-bg.jpg";
+import { Mail, Phone } from "lucide-react";
 
 const features = [
   {
