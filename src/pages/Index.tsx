@@ -6,6 +6,7 @@ import FeaturedEvents from "@/components/FeaturedEvents";
 import heroImage from "@/assets/hero-event.jpg";
 import contactBg from "@/assets/contact-bg.jpg";
 import { Mail, Phone } from "lucide-react";
+import QrScannerFab from "@/components/QrScannerFab";
 
 const features = [
   {
@@ -269,6 +270,7 @@ const Index = () => {
           </p>
         </div>
       </footer>
+      <QrScannerFab />
     </div>
   );
 };
