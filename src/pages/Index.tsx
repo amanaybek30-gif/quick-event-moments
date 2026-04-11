@@ -270,6 +270,7 @@ const Index = () => {
           </p>
         </div>
       </footer>
+      <QrScannerFab />
     </div>
   );
 };
