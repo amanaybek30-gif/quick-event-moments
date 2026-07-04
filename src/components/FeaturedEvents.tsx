@@ -65,10 +65,11 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
     setPasswordDialogOpen(true);
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEvent) return;
-    if (passwordInput === selectedEvent.password) {
+    const ok = await verifyEventPassword(selectedEvent.id, passwordInput);
+    if (ok) {
       setPasswordDialogOpen(false);
       sessionStorage.setItem(`organizer_auth_${selectedEvent.id}`, "true");
       navigate(`/organizer/${selectedEvent.id}`);
