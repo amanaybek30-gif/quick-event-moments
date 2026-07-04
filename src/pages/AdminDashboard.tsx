@@ -499,7 +499,7 @@ const AdminDashboard = () => {
                         {new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </p>
                       <p className="text-xs text-gold font-body mt-1 flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Password: {event.password}
+                        <Lock className="w-3 h-3" /> Password protected
                       </p>
                     </div>
                     <div className="flex gap-4 text-xs text-muted-foreground font-body mt-2">
