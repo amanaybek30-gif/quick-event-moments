@@ -137,7 +137,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      verify_event_password: {
+        Args: { _event_id: string; _password: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
