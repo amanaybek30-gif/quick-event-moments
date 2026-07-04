@@ -68,14 +68,14 @@ export const fetchEventById = async (eventId: string): Promise<EventData | null>
   return mapRow(data);
 };
 
-export const createEvent = async (event: EventData): Promise<boolean> => {
+export const createEvent = async (event: EventData, password: string): Promise<boolean> => {
   const { error } = await supabase.from("events").insert({
     id: event.id,
     name: event.name,
     date: event.date,
     description: event.description,
     cover_image: event.cover_image,
-    password: event.password,
+    password,
     welcome_message: event.welcome_message || null,
     welcome_title: event.welcome_title || "Welcome!",
     welcome_background_image: event.welcome_background_image || null,
