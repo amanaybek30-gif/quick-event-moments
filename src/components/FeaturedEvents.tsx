@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { fetchAllEvents, type EventData } from "@/lib/eventService";
+import { fetchAllEvents, verifyEventPassword, type EventData } from "@/lib/eventService";
 import { supabase } from "@/integrations/supabase/client";
 
 interface FeaturedEventsProps {
