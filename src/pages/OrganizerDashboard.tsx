@@ -19,6 +19,7 @@ import {
   fetchEventById, fetchEventMedia, deleteMedia,
   clearEventMedia, updateEventWelcome, updateEventQrEnabled,
   updateEventImages, uploadCoverImage, uploadWelcomeBackgroundImage,
+  verifyEventPassword,
   type EventData, type MediaItem,
 } from "@/lib/eventService";
 
@@ -70,9 +71,11 @@ const OrganizerDashboard = () => {
     }
   }, [authenticated, eventId]);
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (event && passwordInput === event.password) {
+    if (!eventId) return;
+    const ok = await verifyEventPassword(eventId, passwordInput);
+    if (ok) {
       setAuthenticated(true);
       sessionStorage.setItem(`organizer_auth_${eventId}`, "true");
       toast({ title: "Access granted!", description: "Welcome to the event dashboard." });

@@ -6,7 +6,6 @@ export interface EventData {
   date: string;
   description: string;
   cover_image: string;
-  password: string;
   welcome_message?: string | null;
   welcome_title?: string | null;
   welcome_background_image?: string | null;
@@ -16,14 +15,13 @@ export interface EventData {
   created_at?: string;
 }
 
-// Map DB row to EventData
+// Map DB row to EventData (password column is no longer readable client-side)
 const mapRow = (row: any): EventData => ({
   id: row.id,
   name: row.name,
   date: row.date,
   description: row.description || "",
   cover_image: row.cover_image || "",
-  password: row.password,
   welcome_message: row.welcome_message,
   welcome_title: row.welcome_title ?? "Welcome!",
   welcome_background_image: row.welcome_background_image ?? null,
@@ -32,6 +30,21 @@ const mapRow = (row: any): EventData => ({
   contributors: row.contributors || 0,
   created_at: row.created_at,
 });
+
+// Verify an event password via a secure database function without ever
+// reading the password from the client.
+export const verifyEventPassword = async (eventId: string, password: string): Promise<boolean> => {
+  const { data, error } = await supabase.rpc("verify_event_password", {
+    _event_id: eventId,
+    _password: password,
+  });
+  if (error) {
+    console.error("verify_event_password error:", error);
+    return false;
+  }
+  return data === true;
+};
+
 
 export const fetchAllEvents = async (): Promise<EventData[]> => {
   const { data, error } = await supabase
@@ -55,14 +68,14 @@ export const fetchEventById = async (eventId: string): Promise<EventData | null>
   return mapRow(data);
 };
 
-export const createEvent = async (event: EventData): Promise<boolean> => {
+export const createEvent = async (event: EventData, password: string): Promise<boolean> => {
   const { error } = await supabase.from("events").insert({
     id: event.id,
     name: event.name,
     date: event.date,
     description: event.description,
     cover_image: event.cover_image,
-    password: event.password,
+    password,
     welcome_message: event.welcome_message || null,
     welcome_title: event.welcome_title || "Welcome!",
     welcome_background_image: event.welcome_background_image || null,

@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { fetchAllEvents, type EventData } from "@/lib/eventService";
+import { fetchAllEvents, verifyEventPassword, type EventData } from "@/lib/eventService";
 import { supabase } from "@/integrations/supabase/client";
 
 interface FeaturedEventsProps {
@@ -65,10 +65,11 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
     setPasswordDialogOpen(true);
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEvent) return;
-    if (passwordInput === selectedEvent.password) {
+    const ok = await verifyEventPassword(selectedEvent.id, passwordInput);
+    if (ok) {
       setPasswordDialogOpen(false);
       sessionStorage.setItem(`organizer_auth_${selectedEvent.id}`, "true");
       navigate(`/organizer/${selectedEvent.id}`);

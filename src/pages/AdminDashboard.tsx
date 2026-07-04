@@ -177,13 +177,12 @@ const AdminDashboard = () => {
       cover_image: coverUrl,
       uploads: 0,
       contributors: 0,
-      password: newEvent.password,
       welcome_title: newEvent.welcomeTitle || "Welcome!",
       welcome_message: newEvent.welcomeMessage || null,
       welcome_background_image: welcomeBgUrl,
     };
 
-    const success = await createEvent(eventData);
+    const success = await createEvent(eventData, newEvent.password);
     if (success) {
       const allShowcaseFiles = [...showcasePhotoFiles, ...showcaseVideoFiles];
       if (allShowcaseFiles.length > 0) {
@@ -500,7 +499,7 @@ const AdminDashboard = () => {
                         {new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </p>
                       <p className="text-xs text-gold font-body mt-1 flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Password: {event.password}
+                        <Lock className="w-3 h-3" /> Password protected
                       </p>
                     </div>
                     <div className="flex gap-4 text-xs text-muted-foreground font-body mt-2">
