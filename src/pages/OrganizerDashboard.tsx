@@ -19,6 +19,7 @@ import {
   fetchEventById, fetchEventMedia, deleteMedia,
   clearEventMedia, updateEventWelcome, updateEventQrEnabled,
   updateEventImages, uploadCoverImage, uploadWelcomeBackgroundImage,
+  verifyEventPassword,
   type EventData, type MediaItem,
 } from "@/lib/eventService";
 
