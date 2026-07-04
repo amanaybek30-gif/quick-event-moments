@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-const ADMIN_EMAIL = "admin@vionevents.com";
-const ADMIN_PASSWORD = "0105Aman@aybek";
+const ADMIN_EMAIL = "momentique@vionevents.com";
+const ADMIN_PASSWORD = "momentique123";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
