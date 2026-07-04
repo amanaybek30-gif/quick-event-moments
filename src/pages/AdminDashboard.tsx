@@ -177,13 +177,12 @@ const AdminDashboard = () => {
       cover_image: coverUrl,
       uploads: 0,
       contributors: 0,
-      password: newEvent.password,
       welcome_title: newEvent.welcomeTitle || "Welcome!",
       welcome_message: newEvent.welcomeMessage || null,
       welcome_background_image: welcomeBgUrl,
     };
 
-    const success = await createEvent(eventData);
+    const success = await createEvent(eventData, newEvent.password);
     if (success) {
       const allShowcaseFiles = [...showcasePhotoFiles, ...showcaseVideoFiles];
       if (allShowcaseFiles.length > 0) {
