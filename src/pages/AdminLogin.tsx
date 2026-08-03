@@ -23,6 +23,7 @@ const AdminLogin = () => {
     setTimeout(() => {
       if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
         localStorage.setItem("mv_role", "admin");
+        storeAdminPassword(password);
         navigate("/admin");
         toast({ title: "Welcome back!", description: "You're now logged in." });
       } else {

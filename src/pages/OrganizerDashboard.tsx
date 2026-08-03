@@ -85,7 +85,8 @@ const OrganizerDashboard = () => {
   };
 
   const handleDeleteMedia = async (mediaId: string) => {
-    const success = await deleteMedia(mediaId);
+    if (!eventId) return;
+    const success = await deleteMedia(eventId, mediaId);
     if (success) {
       setMediaItems((prev) => prev.filter((m) => m.id !== mediaId));
       toast({ title: "Media deleted" });
