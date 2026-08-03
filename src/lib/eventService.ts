@@ -303,18 +303,18 @@ export const uploadShowcaseMedia = async (
     created_at: new Date().toISOString(),
   };
 
-  const { error: insertError } = await supabase
-    .from("event_showcase_media")
-    .insert({ event_id: eventId, file_url: item.file_url, type: item.type, sort_order: item.sort_order });
-  if (insertError) {
-    console.error("Showcase insert error:", insertError);
-    return null;
-  }
+  const { ok } = await callEventWrite("add_showcase", {
+    eventId,
+    file_url: item.file_url,
+    type: item.type,
+    sort_order: item.sort_order,
+  });
+  if (!ok) return null;
 
   return item;
 };
 
-export const deleteShowcaseMedia = async (mediaId: string): Promise<boolean> => {
-  const { error } = await supabase.from("event_showcase_media").delete().eq("id", mediaId);
-  return !error;
+export const deleteShowcaseMedia = async (eventId: string, mediaId: string): Promise<boolean> => {
+  const { ok } = await callEventWrite("delete_showcase", { eventId, mediaId });
+  return ok;
 };
