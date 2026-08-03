@@ -31,19 +31,51 @@ const mapRow = (row: any): EventData => ({
   created_at: row.created_at,
 });
 
-// Verify an event password via a secure database function without ever
-// reading the password from the client.
-export const verifyEventPassword = async (eventId: string, password: string): Promise<boolean> => {
-  const { data, error } = await supabase.rpc("verify_event_password", {
-    _event_id: eventId,
-    _password: password,
+// ── Secure write layer ──
+// All privileged writes go through the `event-write` edge function, which
+// validates the admin password or the event (host) password server-side.
+
+const ADMIN_PW_KEY = "mv_admin_pw";
+const eventPwKey = (eventId: string) => `mv_event_pw_${eventId}`;
+
+export const storeAdminPassword = (password: string) =>
+  sessionStorage.setItem(ADMIN_PW_KEY, password);
+export const clearAdminPassword = () => sessionStorage.removeItem(ADMIN_PW_KEY);
+export const storeEventPassword = (eventId: string, password: string) =>
+  sessionStorage.setItem(eventPwKey(eventId), password);
+
+const credentials = (eventId?: string) => ({
+  adminPassword: sessionStorage.getItem(ADMIN_PW_KEY) || undefined,
+  eventPassword: eventId ? sessionStorage.getItem(eventPwKey(eventId)) || undefined : undefined,
+});
+
+const callEventWrite = async <T = any>(
+  action: string,
+  payload: Record<string, unknown> = {}
+): Promise<{ ok: boolean; data?: T }> => {
+  const eventId = payload.eventId as string | undefined;
+  const { data, error } = await supabase.functions.invoke("event-write", {
+    body: { action, ...credentials(eventId), ...payload },
   });
   if (error) {
-    console.error("verify_event_password error:", error);
-    return false;
+    console.error(`event-write ${action} failed`);
+    return { ok: false };
   }
-  return data === true;
+  return { ok: true, data: data as T };
 };
+
+// Verify an event password server-side; never reads the password client-side.
+export const verifyEventPassword = async (eventId: string, password: string): Promise<boolean> => {
+  const { data, error } = await supabase.functions.invoke("event-write", {
+    body: { action: "verify_password", eventId, eventPassword: password },
+  });
+  if (error) return false;
+  const valid = (data as { valid?: boolean })?.valid === true;
+  if (valid) storeEventPassword(eventId, password);
+  return valid;
+};
+
+
 
 
 export const fetchAllEvents = async (): Promise<EventData[]> => {
@@ -69,62 +101,56 @@ export const fetchEventById = async (eventId: string): Promise<EventData | null>
 };
 
 export const createEvent = async (event: EventData, password: string): Promise<boolean> => {
-  const { error } = await supabase.from("events").insert({
-    id: event.id,
-    name: event.name,
-    date: event.date,
-    description: event.description,
-    cover_image: event.cover_image,
+  const { ok } = await callEventWrite("create_event", {
     password,
-    welcome_message: event.welcome_message || null,
-    welcome_title: event.welcome_title || "Welcome!",
-    welcome_background_image: event.welcome_background_image || null,
-    qr_enabled: event.qr_enabled ?? true,
-    uploads: 0,
-    contributors: 0,
+    event: {
+      id: event.id,
+      name: event.name,
+      date: event.date,
+      description: event.description,
+      cover_image: event.cover_image,
+      welcome_message: event.welcome_message || null,
+      welcome_title: event.welcome_title || "Welcome!",
+      welcome_background_image: event.welcome_background_image || null,
+      qr_enabled: event.qr_enabled ?? true,
+    },
   });
-  if (error) {
-    console.error("Error creating event:", error);
-    return false;
-  }
-  return true;
+  return ok;
 };
 
 export const deleteEvent = async (eventId: string): Promise<boolean> => {
-  const { error } = await supabase.from("events").delete().eq("id", eventId);
-  return !error;
+  const { ok } = await callEventWrite("delete_event", { eventId });
+  return ok;
 };
 
 export const updateEventWelcome = async (eventId: string, title: string, message: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from("events")
-    .update({ welcome_title: title, welcome_message: message })
-    .eq("id", eventId);
-  return !error;
+  const { ok } = await callEventWrite("update_event", {
+    eventId,
+    updates: { welcome_title: title, welcome_message: message },
+  });
+  return ok;
 };
 
 export const updateEventQrEnabled = async (eventId: string, enabled: boolean): Promise<boolean> => {
-  const { error } = await supabase
-    .from("events")
-    .update({ qr_enabled: enabled })
-    .eq("id", eventId);
-  return !error;
+  const { ok } = await callEventWrite("update_event", {
+    eventId,
+    updates: { qr_enabled: enabled },
+  });
+  return ok;
 };
 
 export const updateEventImages = async (
   eventId: string,
   updates: { cover_image?: string; welcome_background_image?: string | null }
 ): Promise<boolean> => {
-  const { error } = await supabase.from("events").update(updates).eq("id", eventId);
-  return !error;
+  const { ok } = await callEventWrite("update_event", { eventId, updates });
+  return ok;
 };
 
 export const uploadCoverImage = async (eventId: string, file: File): Promise<string | null> => {
   const ext = file.name.split(".").pop() || "jpg";
-  const path = `${eventId}/cover.${ext}`;
-  const { error } = await supabase.storage
-    .from("event-covers")
-    .upload(path, file, { upsert: true });
+  const path = `${eventId}/cover-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("event-covers").upload(path, file);
   if (error) {
     console.error("Cover upload error:", error);
     return null;
@@ -135,17 +161,14 @@ export const uploadCoverImage = async (eventId: string, file: File): Promise<str
 
 export const uploadWelcomeBackgroundImage = async (eventId: string, file: File): Promise<string | null> => {
   const ext = file.name.split(".").pop() || "jpg";
-  const path = `${eventId}/welcome-bg.${ext}`;
-  const { error } = await supabase.storage
-    .from("event-covers")
-    .upload(path, file, { upsert: true });
+  const path = `${eventId}/welcome-bg-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("event-covers").upload(path, file);
   if (error) {
     console.error("Welcome background upload error:", error);
     return null;
   }
   const { data } = supabase.storage.from("event-covers").getPublicUrl(path);
-  // Bust browser cache when re-uploading
-  return `${data.publicUrl}?t=${Date.now()}`;
+  return data.publicUrl;
 };
 
 export interface MediaItem {
@@ -221,20 +244,14 @@ export const uploadMedia = async (
   return item;
 };
 
-export const deleteMedia = async (mediaId: string): Promise<boolean> => {
-  const { error } = await supabase.from("event_media").delete().eq("id", mediaId);
-  return !error;
+export const deleteMedia = async (eventId: string, mediaId: string): Promise<boolean> => {
+  const { ok } = await callEventWrite("delete_media", { eventId, mediaId });
+  return ok;
 };
 
 export const clearEventMedia = async (eventId: string): Promise<boolean> => {
-  const { error } = await supabase.from("event_media").delete().eq("event_id", eventId);
-  if (error) return false;
-  const { data: files } = await supabase.storage.from("event-media").list(eventId);
-  if (files && files.length > 0) {
-    const paths = files.map((f) => `${eventId}/${f.name}`);
-    await supabase.storage.from("event-media").remove(paths);
-  }
-  return true;
+  const { ok } = await callEventWrite("clear_media", { eventId });
+  return ok;
 };
 
 // ── Showcase media (admin-uploaded photos/videos for event page) ──
@@ -286,18 +303,18 @@ export const uploadShowcaseMedia = async (
     created_at: new Date().toISOString(),
   };
 
-  const { error: insertError } = await supabase
-    .from("event_showcase_media")
-    .insert({ event_id: eventId, file_url: item.file_url, type: item.type, sort_order: item.sort_order });
-  if (insertError) {
-    console.error("Showcase insert error:", insertError);
-    return null;
-  }
+  const { ok } = await callEventWrite("add_showcase", {
+    eventId,
+    file_url: item.file_url,
+    type: item.type,
+    sort_order: item.sort_order,
+  });
+  if (!ok) return null;
 
   return item;
 };
 
-export const deleteShowcaseMedia = async (mediaId: string): Promise<boolean> => {
-  const { error } = await supabase.from("event_showcase_media").delete().eq("id", mediaId);
-  return !error;
+export const deleteShowcaseMedia = async (eventId: string, mediaId: string): Promise<boolean> => {
+  const { ok } = await callEventWrite("delete_showcase", { eventId, mediaId });
+  return ok;
 };

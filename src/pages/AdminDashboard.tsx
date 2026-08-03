@@ -36,6 +36,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   fetchAllEvents,
+  clearAdminPassword,
   createEvent,
   deleteEvent,
   uploadCoverImage,
@@ -75,7 +76,8 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const role = localStorage.getItem("mv_role");
-    if (role !== "admin") {
+    if (role !== "admin" || !sessionStorage.getItem("mv_admin_pw")) {
+      localStorage.removeItem("mv_role");
       navigate("/admin/login");
       return;
     }
@@ -284,6 +286,7 @@ const AdminDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("mv_role");
+    clearAdminPassword();
     navigate("/");
   };
 

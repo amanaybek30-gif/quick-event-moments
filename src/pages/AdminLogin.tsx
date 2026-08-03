@@ -5,6 +5,7 @@ import { Lock, Mail, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { storeAdminPassword } from "@/lib/eventService";
 
 const ADMIN_EMAIL = "momentique@vionevents.com";
 const ADMIN_PASSWORD = "momentique123";
@@ -23,6 +24,7 @@ const AdminLogin = () => {
     setTimeout(() => {
       if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
         localStorage.setItem("mv_role", "admin");
+        storeAdminPassword(password);
         navigate("/admin");
         toast({ title: "Welcome back!", description: "You're now logged in." });
       } else {
