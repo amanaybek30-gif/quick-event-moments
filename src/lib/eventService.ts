@@ -49,6 +49,10 @@ const credentials = (eventId?: string) => ({
   eventPassword: eventId ? sessionStorage.getItem(eventPwKey(eventId)) || undefined : undefined,
 });
 
+// True when the current session holds admin or host (event password) credentials
+export const hasEventAccess = (eventId: string) =>
+  !!sessionStorage.getItem(ADMIN_PW_KEY) || !!sessionStorage.getItem(eventPwKey(eventId));
+
 const callEventWrite = async <T = any>(
   action: string,
   payload: Record<string, unknown> = {}
