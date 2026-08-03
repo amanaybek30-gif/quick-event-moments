@@ -9,6 +9,7 @@ import {
   fetchEventMedia,
   fetchShowcaseMedia,
   uploadMedia,
+  hasEventAccess,
   type EventData,
   type MediaItem,
   type ShowcaseMediaItem,
