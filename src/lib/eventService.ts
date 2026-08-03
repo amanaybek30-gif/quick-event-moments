@@ -254,6 +254,19 @@ export const uploadMedia = async (
     uploaded_at: new Date().toISOString(),
   };
 
+  if (hasEventAccess(eventId)) {
+    // Host/admin session: insert via secure edge function (works even if QR is off)
+    const { ok } = await callEventWrite("add_media", {
+      eventId,
+      mediaId: id,
+      file_url: fileUrl,
+      type,
+      uploader_name: item.uploader_name,
+    });
+    if (!ok) return null;
+    return item;
+  }
+
   const { error: insertError } = await supabase.from("event_media").insert(item);
   if (insertError) {
     console.error("Media record insert error:", insertError);
