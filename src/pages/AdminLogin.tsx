@@ -5,6 +5,7 @@ import { Lock, Mail, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { storeAdminPassword } from "@/lib/eventService";
 
 const ADMIN_EMAIL = "momentique@vionevents.com";
 const ADMIN_PASSWORD = "momentique123";
