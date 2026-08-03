@@ -31,19 +31,51 @@ const mapRow = (row: any): EventData => ({
   created_at: row.created_at,
 });
 
-// Verify an event password via a secure database function without ever
-// reading the password from the client.
-export const verifyEventPassword = async (eventId: string, password: string): Promise<boolean> => {
-  const { data, error } = await supabase.rpc("verify_event_password", {
-    _event_id: eventId,
-    _password: password,
+// ── Secure write layer ──
+// All privileged writes go through the `event-write` edge function, which
+// validates the admin password or the event (host) password server-side.
+
+const ADMIN_PW_KEY = "mv_admin_pw";
+const eventPwKey = (eventId: string) => `mv_event_pw_${eventId}`;
+
+export const storeAdminPassword = (password: string) =>
+  sessionStorage.setItem(ADMIN_PW_KEY, password);
+export const clearAdminPassword = () => sessionStorage.removeItem(ADMIN_PW_KEY);
+export const storeEventPassword = (eventId: string, password: string) =>
+  sessionStorage.setItem(eventPwKey(eventId), password);
+
+const credentials = (eventId?: string) => ({
+  adminPassword: sessionStorage.getItem(ADMIN_PW_KEY) || undefined,
+  eventPassword: eventId ? sessionStorage.getItem(eventPwKey(eventId)) || undefined : undefined,
+});
+
+const callEventWrite = async <T = any>(
+  action: string,
+  payload: Record<string, unknown> = {}
+): Promise<{ ok: boolean; data?: T }> => {
+  const eventId = payload.eventId as string | undefined;
+  const { data, error } = await supabase.functions.invoke("event-write", {
+    body: { action, ...credentials(eventId), ...payload },
   });
   if (error) {
-    console.error("verify_event_password error:", error);
-    return false;
+    console.error(`event-write ${action} failed`);
+    return { ok: false };
   }
-  return data === true;
+  return { ok: true, data: data as T };
 };
+
+// Verify an event password server-side; never reads the password client-side.
+export const verifyEventPassword = async (eventId: string, password: string): Promise<boolean> => {
+  const { data, error } = await supabase.functions.invoke("event-write", {
+    body: { action: "verify_password", eventId, eventPassword: password },
+  });
+  if (error) return false;
+  const valid = (data as { valid?: boolean })?.valid === true;
+  if (valid) storeEventPassword(eventId, password);
+  return valid;
+};
+
+
 
 
 export const fetchAllEvents = async (): Promise<EventData[]> => {
