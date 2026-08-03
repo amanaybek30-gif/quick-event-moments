@@ -346,33 +346,35 @@ const OrganizerDashboard = () => {
         </div>
 
         <div className="flex gap-3 mb-8">
-          <Dialog open={welcomeDialogOpen} onOpenChange={setWelcomeDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="flex-1"><MessageSquare className="w-4 h-4 mr-2" /> Welcome Message</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle className="font-display text-xl">Set Welcome Message</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-2">
-                <div>
-                  <label className="block text-sm font-body text-muted-foreground mb-1">Title</label>
-                  <Input placeholder="Welcome!" value={welcomeTitle} onChange={(e) => setWelcomeTitle(e.target.value)} className="font-body h-11" />
-                </div>
-                <div>
-                  <label className="block text-sm font-body text-muted-foreground mb-1">Message</label>
-                  <Textarea placeholder="Enter a welcome message guests will see..." value={welcomeMsg} onChange={(e) => setWelcomeMsg(e.target.value)} className="font-body min-h-[100px]" />
-                </div>
-                <Button variant="gold" className="w-full" onClick={handleSaveWelcome}>Save Message</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
           <Dialog open={imagesDialogOpen} onOpenChange={(o) => (o ? openImagesDialog() : setImagesDialogOpen(false))}>
-            <DialogContent className="max-w-md">
+            <DialogTrigger asChild>
+              <Button variant="outline" className="flex-1"><Pencil className="w-4 h-4 mr-2" /> Edit Event</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="font-display text-xl">Edit Cover & Welcome Background</DialogTitle>
+                <DialogTitle className="font-display text-xl">Edit Event</DialogTitle>
               </DialogHeader>
               <div className="space-y-5 mt-2">
+                <div>
+                  <label className="block text-sm font-body text-muted-foreground mb-1">Event Name</label>
+                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="font-body h-11" />
+                </div>
+                <div>
+                  <label className="block text-sm font-body text-muted-foreground mb-1">Event Date</label>
+                  <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="font-body h-11" />
+                </div>
+                <div>
+                  <label className="block text-sm font-body text-muted-foreground mb-1">Venue</label>
+                  <Input value={editVenue} onChange={(e) => setEditVenue(e.target.value)} placeholder="Venue / location" className="font-body h-11" />
+                </div>
+                <div>
+                  <label className="block text-sm font-body text-muted-foreground mb-1">Welcome Title</label>
+                  <Input placeholder="Welcome!" value={welcomeTitle} onChange={(e) => setWelcomeTitle(e.target.value)} className="font-body h-11" />
+                </div>
+                <div className="relative">
+                  <label className="block text-sm font-body text-muted-foreground mb-1">Welcome Message</label>
+                  <Textarea placeholder="Enter a welcome message guests will see..." value={welcomeMsg} onChange={(e) => setWelcomeMsg(e.target.value)} className="font-body min-h-[100px]" />
+                </div>
                 <div>
                   <label className="block text-sm font-body text-muted-foreground mb-2">Cover Image</label>
                   {coverPreview && (
@@ -397,12 +399,13 @@ const OrganizerDashboard = () => {
                     if (f) setWelcomeBgPreview(URL.createObjectURL(f));
                   }} className="font-body" />
                 </div>
-                <Button variant="gold" className="w-full" onClick={handleSaveImages} disabled={savingImages}>
-                  {savingImages ? "Saving..." : "Save Images"}
+                <Button variant="gold" className="w-full" onClick={handleSaveEventDetails} disabled={savingImages}>
+                  {savingImages ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
+
           {mediaItems.length > 0 && (
             <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleClearGallery}>
               <Trash2 className="w-4 h-4 mr-2" /> Clear Gallery
