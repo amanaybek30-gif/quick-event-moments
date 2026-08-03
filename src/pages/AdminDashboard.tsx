@@ -36,6 +36,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   fetchAllEvents,
+  clearAdminPassword,
   createEvent,
   deleteEvent,
   uploadCoverImage,
