@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Download, QrCode, Upload, Users,
-  Image as ImageIcon, Share2, Lock, Trash2, MessageSquare, Pencil,
+  Image as ImageIcon, Share2, Lock, Trash2, Pencil,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,6 @@ const OrganizerDashboard = () => {
   const [editVenue, setEditVenue] = useState("");
   const [welcomeTitle, setWelcomeTitle] = useState("Welcome!");
   const [welcomeMsg, setWelcomeMsg] = useState("");
-  const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [qrEnabled, setQrEnabled] = useState(true);
   const [imagesDialogOpen, setImagesDialogOpen] = useState(false);
