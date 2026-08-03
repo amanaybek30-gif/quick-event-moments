@@ -101,54 +101,50 @@ export const fetchEventById = async (eventId: string): Promise<EventData | null>
 };
 
 export const createEvent = async (event: EventData, password: string): Promise<boolean> => {
-  const { error } = await supabase.from("events").insert({
-    id: event.id,
-    name: event.name,
-    date: event.date,
-    description: event.description,
-    cover_image: event.cover_image,
+  const { ok } = await callEventWrite("create_event", {
     password,
-    welcome_message: event.welcome_message || null,
-    welcome_title: event.welcome_title || "Welcome!",
-    welcome_background_image: event.welcome_background_image || null,
-    qr_enabled: event.qr_enabled ?? true,
-    uploads: 0,
-    contributors: 0,
+    event: {
+      id: event.id,
+      name: event.name,
+      date: event.date,
+      description: event.description,
+      cover_image: event.cover_image,
+      welcome_message: event.welcome_message || null,
+      welcome_title: event.welcome_title || "Welcome!",
+      welcome_background_image: event.welcome_background_image || null,
+      qr_enabled: event.qr_enabled ?? true,
+    },
   });
-  if (error) {
-    console.error("Error creating event:", error);
-    return false;
-  }
-  return true;
+  return ok;
 };
 
 export const deleteEvent = async (eventId: string): Promise<boolean> => {
-  const { error } = await supabase.from("events").delete().eq("id", eventId);
-  return !error;
+  const { ok } = await callEventWrite("delete_event", { eventId });
+  return ok;
 };
 
 export const updateEventWelcome = async (eventId: string, title: string, message: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from("events")
-    .update({ welcome_title: title, welcome_message: message })
-    .eq("id", eventId);
-  return !error;
+  const { ok } = await callEventWrite("update_event", {
+    eventId,
+    updates: { welcome_title: title, welcome_message: message },
+  });
+  return ok;
 };
 
 export const updateEventQrEnabled = async (eventId: string, enabled: boolean): Promise<boolean> => {
-  const { error } = await supabase
-    .from("events")
-    .update({ qr_enabled: enabled })
-    .eq("id", eventId);
-  return !error;
+  const { ok } = await callEventWrite("update_event", {
+    eventId,
+    updates: { qr_enabled: enabled },
+  });
+  return ok;
 };
 
 export const updateEventImages = async (
   eventId: string,
   updates: { cover_image?: string; welcome_background_image?: string | null }
 ): Promise<boolean> => {
-  const { error } = await supabase.from("events").update(updates).eq("id", eventId);
-  return !error;
+  const { ok } = await callEventWrite("update_event", { eventId, updates });
+  return ok;
 };
 
 export const uploadCoverImage = async (eventId: string, file: File): Promise<string | null> => {
