@@ -137,6 +137,26 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
+      case "add_media": {
+        if (!eventId || !host_ok) return json({ error: "Unauthorized" }, 401);
+        const mediaId = str(body.mediaId, 200);
+        const fileUrl = str(body.file_url, 2000);
+        const type = str(body.type, 20);
+        const uploaderName = str(body.uploader_name, 200) || "Guest";
+        if (!mediaId || !fileUrl || (type !== "image" && type !== "video")) {
+          return json({ error: "Invalid media" }, 400);
+        }
+        const { error } = await admin.from("event_media").insert({
+          id: mediaId,
+          event_id: eventId,
+          file_url: fileUrl,
+          type,
+          uploader_name: uploaderName,
+        });
+        if (error) return json({ error: "Could not add media" }, 400);
+        return json({ ok: true });
+      }
+
       case "delete_media": {
         const mediaId = str(body.mediaId, 200);
         if (!eventId || !mediaId || !host_ok) return json({ error: "Unauthorized" }, 401);
