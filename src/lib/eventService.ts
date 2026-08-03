@@ -49,6 +49,10 @@ const credentials = (eventId?: string) => ({
   eventPassword: eventId ? sessionStorage.getItem(eventPwKey(eventId)) || undefined : undefined,
 });
 
+// True when the current session holds admin or host (event password) credentials
+export const hasEventAccess = (eventId: string) =>
+  !!sessionStorage.getItem(ADMIN_PW_KEY) || !!sessionStorage.getItem(eventPwKey(eventId));
+
 const callEventWrite = async <T = any>(
   action: string,
   payload: Record<string, unknown> = {}
@@ -253,6 +257,19 @@ export const uploadMedia = async (
     uploader_name: uploaderName || "Guest",
     uploaded_at: new Date().toISOString(),
   };
+
+  if (hasEventAccess(eventId)) {
+    // Host/admin session: insert via secure edge function (works even if QR is off)
+    const { ok } = await callEventWrite("add_media", {
+      eventId,
+      mediaId: id,
+      file_url: fileUrl,
+      type,
+      uploader_name: item.uploader_name,
+    });
+    if (!ok) return null;
+    return item;
+  }
 
   const { error: insertError } = await supabase.from("event_media").insert(item);
   if (insertError) {

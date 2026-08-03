@@ -9,6 +9,7 @@ import {
   fetchEventMedia,
   fetchShowcaseMedia,
   uploadMedia,
+  hasEventAccess,
   type EventData,
   type MediaItem,
   type ShowcaseMediaItem,
@@ -577,7 +578,7 @@ const EventPage = () => {
   }
 
   /* ─── QR Access Blocked ─── */
-  if (event.qr_enabled === false) {
+  if (event.qr_enabled === false && !hasEventAccess(event.id)) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
