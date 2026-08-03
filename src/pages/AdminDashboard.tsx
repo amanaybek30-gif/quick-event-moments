@@ -285,6 +285,7 @@ const AdminDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("mv_role");
+    clearAdminPassword();
     navigate("/");
   };
 
