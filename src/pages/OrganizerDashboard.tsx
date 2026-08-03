@@ -17,8 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import MediaGallery from "@/components/MediaGallery";
 import {
   fetchEventById, fetchEventMedia, deleteMedia,
-  clearEventMedia, updateEventWelcome, updateEventQrEnabled,
-  updateEventImages, uploadCoverImage, uploadWelcomeBackgroundImage,
+  clearEventMedia, updateEventQrEnabled,
+  updateEventDetails, uploadCoverImage, uploadWelcomeBackgroundImage,
   verifyEventPassword,
   type EventData, type MediaItem,
 } from "@/lib/eventService";
@@ -32,6 +32,9 @@ const OrganizerDashboard = () => {
   const [passwordInput, setPasswordInput] = useState("");
   const [event, setEvent] = useState<EventData | null>(null);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [editName, setEditName] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editVenue, setEditVenue] = useState("");
   const [welcomeTitle, setWelcomeTitle] = useState("Welcome!");
   const [welcomeMsg, setWelcomeMsg] = useState("");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
@@ -51,6 +54,9 @@ const OrganizerDashboard = () => {
       const found = await fetchEventById(eventId);
       if (found) {
         setEvent(found);
+        setEditName(found.name);
+        setEditDate(found.date);
+        setEditVenue(found.venue || "");
         setWelcomeTitle(found.welcome_title || "Welcome!");
         setWelcomeMsg(found.welcome_message || "");
         setQrEnabled(found.qr_enabled ?? true);
@@ -102,16 +108,6 @@ const OrganizerDashboard = () => {
     }
   };
 
-  const handleSaveWelcome = async () => {
-    if (!eventId) return;
-    const success = await updateEventWelcome(eventId, welcomeTitle, welcomeMsg);
-    if (success) {
-      setEvent((prev) => prev ? { ...prev, welcome_title: welcomeTitle, welcome_message: welcomeMsg } : prev);
-      setWelcomeDialogOpen(false);
-      toast({ title: "Welcome message saved!" });
-    }
-  };
-
   const handleToggleQr = async (enabled: boolean) => {
     if (!eventId) return;
     setQrEnabled(enabled);
@@ -130,33 +126,40 @@ const OrganizerDashboard = () => {
     setWelcomeBgFile(null);
     setCoverPreview(event?.cover_image || null);
     setWelcomeBgPreview(event?.welcome_background_image || null);
+    setEditName(event?.name || "");
+    setEditDate(event?.date || "");
+    setEditVenue(event?.venue || "");
+    setWelcomeTitle(event?.welcome_title || "Welcome!");
+    setWelcomeMsg(event?.welcome_message || "");
     setImagesDialogOpen(true);
   };
 
-  const handleSaveImages = async () => {
+  const handleSaveEventDetails = async () => {
     if (!eventId) return;
     setSavingImages(true);
     try {
-      const updates: { cover_image?: string; welcome_background_image?: string | null } = {};
+      const updates: Record<string, unknown> = {
+        name: editName,
+        date: editDate,
+        venue: editVenue,
+        welcome_title: welcomeTitle || "Welcome!",
+        welcome_message: welcomeMsg || null,
+      };
       if (coverFile) {
         const url = await uploadCoverImage(eventId, coverFile);
-        if (url) updates.cover_image = `${url}?t=${Date.now()}`;
+        if (url) updates.cover_image = url;
       }
       if (welcomeBgFile) {
         const url = await uploadWelcomeBackgroundImage(eventId, welcomeBgFile);
         if (url) updates.welcome_background_image = url;
       }
-      if (Object.keys(updates).length === 0) {
-        setImagesDialogOpen(false);
-        return;
-      }
-      const ok = await updateEventImages(eventId, updates);
+      const ok = await updateEventDetails(eventId, updates);
       if (ok) {
-        setEvent((prev) => (prev ? { ...prev, ...updates } as EventData : prev));
-        toast({ title: "Images updated!" });
+        setEvent((prev) => (prev ? ({ ...prev, ...updates } as EventData) : prev));
+        toast({ title: "Event updated!" });
         setImagesDialogOpen(false);
       } else {
-        toast({ title: "Failed to update images", variant: "destructive" });
+        toast({ title: "Failed to update event", variant: "destructive" });
       }
     } finally {
       setSavingImages(false);
