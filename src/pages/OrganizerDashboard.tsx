@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Download, QrCode, Upload, Users,
-  Image as ImageIcon, Share2, Lock, Trash2, MessageSquare, Pencil,
+  Image as ImageIcon, Share2, Lock, Trash2, Pencil,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import MediaGallery from "@/components/MediaGallery";
 import {
   fetchEventById, fetchEventMedia, deleteMedia,
-  clearEventMedia, updateEventWelcome, updateEventQrEnabled,
-  updateEventImages, uploadCoverImage, uploadWelcomeBackgroundImage,
+  clearEventMedia, updateEventQrEnabled,
+  updateEventDetails, uploadCoverImage, uploadWelcomeBackgroundImage,
   verifyEventPassword,
   type EventData, type MediaItem,
 } from "@/lib/eventService";
@@ -32,9 +32,11 @@ const OrganizerDashboard = () => {
   const [passwordInput, setPasswordInput] = useState("");
   const [event, setEvent] = useState<EventData | null>(null);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [editName, setEditName] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editVenue, setEditVenue] = useState("");
   const [welcomeTitle, setWelcomeTitle] = useState("Welcome!");
   const [welcomeMsg, setWelcomeMsg] = useState("");
-  const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [qrEnabled, setQrEnabled] = useState(true);
   const [imagesDialogOpen, setImagesDialogOpen] = useState(false);
@@ -51,6 +53,9 @@ const OrganizerDashboard = () => {
       const found = await fetchEventById(eventId);
       if (found) {
         setEvent(found);
+        setEditName(found.name);
+        setEditDate(found.date);
+        setEditVenue(found.venue || "");
         setWelcomeTitle(found.welcome_title || "Welcome!");
         setWelcomeMsg(found.welcome_message || "");
         setQrEnabled(found.qr_enabled ?? true);
@@ -102,16 +107,6 @@ const OrganizerDashboard = () => {
     }
   };
 
-  const handleSaveWelcome = async () => {
-    if (!eventId) return;
-    const success = await updateEventWelcome(eventId, welcomeTitle, welcomeMsg);
-    if (success) {
-      setEvent((prev) => prev ? { ...prev, welcome_title: welcomeTitle, welcome_message: welcomeMsg } : prev);
-      setWelcomeDialogOpen(false);
-      toast({ title: "Welcome message saved!" });
-    }
-  };
-
   const handleToggleQr = async (enabled: boolean) => {
     if (!eventId) return;
     setQrEnabled(enabled);
@@ -130,33 +125,40 @@ const OrganizerDashboard = () => {
     setWelcomeBgFile(null);
     setCoverPreview(event?.cover_image || null);
     setWelcomeBgPreview(event?.welcome_background_image || null);
+    setEditName(event?.name || "");
+    setEditDate(event?.date || "");
+    setEditVenue(event?.venue || "");
+    setWelcomeTitle(event?.welcome_title || "Welcome!");
+    setWelcomeMsg(event?.welcome_message || "");
     setImagesDialogOpen(true);
   };
 
-  const handleSaveImages = async () => {
+  const handleSaveEventDetails = async () => {
     if (!eventId) return;
     setSavingImages(true);
     try {
-      const updates: { cover_image?: string; welcome_background_image?: string | null } = {};
+      const updates: Record<string, unknown> = {
+        name: editName,
+        date: editDate,
+        venue: editVenue,
+        welcome_title: welcomeTitle || "Welcome!",
+        welcome_message: welcomeMsg || null,
+      };
       if (coverFile) {
         const url = await uploadCoverImage(eventId, coverFile);
-        if (url) updates.cover_image = `${url}?t=${Date.now()}`;
+        if (url) updates.cover_image = url;
       }
       if (welcomeBgFile) {
         const url = await uploadWelcomeBackgroundImage(eventId, welcomeBgFile);
         if (url) updates.welcome_background_image = url;
       }
-      if (Object.keys(updates).length === 0) {
-        setImagesDialogOpen(false);
-        return;
-      }
-      const ok = await updateEventImages(eventId, updates);
+      const ok = await updateEventDetails(eventId, updates);
       if (ok) {
-        setEvent((prev) => (prev ? { ...prev, ...updates } as EventData : prev));
-        toast({ title: "Images updated!" });
+        setEvent((prev) => (prev ? ({ ...prev, ...updates } as EventData) : prev));
+        toast({ title: "Event updated!" });
         setImagesDialogOpen(false);
       } else {
-        toast({ title: "Failed to update images", variant: "destructive" });
+        toast({ title: "Failed to update event", variant: "destructive" });
       }
     } finally {
       setSavingImages(false);
@@ -343,33 +345,35 @@ const OrganizerDashboard = () => {
         </div>
 
         <div className="flex gap-3 mb-8">
-          <Dialog open={welcomeDialogOpen} onOpenChange={setWelcomeDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="flex-1"><MessageSquare className="w-4 h-4 mr-2" /> Welcome Message</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle className="font-display text-xl">Set Welcome Message</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-2">
-                <div>
-                  <label className="block text-sm font-body text-muted-foreground mb-1">Title</label>
-                  <Input placeholder="Welcome!" value={welcomeTitle} onChange={(e) => setWelcomeTitle(e.target.value)} className="font-body h-11" />
-                </div>
-                <div>
-                  <label className="block text-sm font-body text-muted-foreground mb-1">Message</label>
-                  <Textarea placeholder="Enter a welcome message guests will see..." value={welcomeMsg} onChange={(e) => setWelcomeMsg(e.target.value)} className="font-body min-h-[100px]" />
-                </div>
-                <Button variant="gold" className="w-full" onClick={handleSaveWelcome}>Save Message</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
           <Dialog open={imagesDialogOpen} onOpenChange={(o) => (o ? openImagesDialog() : setImagesDialogOpen(false))}>
-            <DialogContent className="max-w-md">
+            <DialogTrigger asChild>
+              <Button variant="outline" className="flex-1"><Pencil className="w-4 h-4 mr-2" /> Edit Event</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="font-display text-xl">Edit Cover & Welcome Background</DialogTitle>
+                <DialogTitle className="font-display text-xl">Edit Event</DialogTitle>
               </DialogHeader>
               <div className="space-y-5 mt-2">
+                <div>
+                  <label className="block text-sm font-body text-muted-foreground mb-1">Event Name</label>
+                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="font-body h-11" />
+                </div>
+                <div>
+                  <label className="block text-sm font-body text-muted-foreground mb-1">Event Date</label>
+                  <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="font-body h-11" />
+                </div>
+                <div>
+                  <label className="block text-sm font-body text-muted-foreground mb-1">Venue</label>
+                  <Input value={editVenue} onChange={(e) => setEditVenue(e.target.value)} placeholder="Venue / location" className="font-body h-11" />
+                </div>
+                <div>
+                  <label className="block text-sm font-body text-muted-foreground mb-1">Welcome Title</label>
+                  <Input placeholder="Welcome!" value={welcomeTitle} onChange={(e) => setWelcomeTitle(e.target.value)} className="font-body h-11" />
+                </div>
+                <div className="relative">
+                  <label className="block text-sm font-body text-muted-foreground mb-1">Welcome Message</label>
+                  <Textarea placeholder="Enter a welcome message guests will see..." value={welcomeMsg} onChange={(e) => setWelcomeMsg(e.target.value)} className="font-body min-h-[100px]" />
+                </div>
                 <div>
                   <label className="block text-sm font-body text-muted-foreground mb-2">Cover Image</label>
                   {coverPreview && (
@@ -394,12 +398,13 @@ const OrganizerDashboard = () => {
                     if (f) setWelcomeBgPreview(URL.createObjectURL(f));
                   }} className="font-body" />
                 </div>
-                <Button variant="gold" className="w-full" onClick={handleSaveImages} disabled={savingImages}>
-                  {savingImages ? "Saving..." : "Save Images"}
+                <Button variant="gold" className="w-full" onClick={handleSaveEventDetails} disabled={savingImages}>
+                  {savingImages ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
+
           {mediaItems.length > 0 && (
             <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleClearGallery}>
               <Trash2 className="w-4 h-4 mr-2" /> Clear Gallery

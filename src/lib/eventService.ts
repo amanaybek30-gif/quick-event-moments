@@ -4,7 +4,7 @@ export interface EventData {
   id: string;
   name: string;
   date: string;
-  description: string;
+  venue: string;
   cover_image: string;
   welcome_message?: string | null;
   welcome_title?: string | null;
@@ -20,7 +20,7 @@ const mapRow = (row: any): EventData => ({
   id: row.id,
   name: row.name,
   date: row.date,
-  description: row.description || "",
+  venue: row.venue || "",
   cover_image: row.cover_image || "",
   welcome_message: row.welcome_message,
   welcome_title: row.welcome_title ?? "Welcome!",
@@ -107,7 +107,7 @@ export const createEvent = async (event: EventData, password: string): Promise<b
       id: event.id,
       name: event.name,
       date: event.date,
-      description: event.description,
+      venue: event.venue,
       cover_image: event.cover_image,
       welcome_message: event.welcome_message || null,
       welcome_title: event.welcome_title || "Welcome!",
@@ -136,6 +136,25 @@ export const updateEventQrEnabled = async (eventId: string, enabled: boolean): P
     eventId,
     updates: { qr_enabled: enabled },
   });
+  return ok;
+};
+
+export interface EventUpdatableFields {
+  name?: string;
+  date?: string;
+  venue?: string;
+  welcome_title?: string;
+  welcome_message?: string | null;
+  cover_image?: string;
+  welcome_background_image?: string | null;
+  qr_enabled?: boolean;
+}
+
+export const updateEventDetails = async (
+  eventId: string,
+  updates: EventUpdatableFields
+): Promise<boolean> => {
+  const { ok } = await callEventWrite("update_event", { eventId, updates });
   return ok;
 };
 

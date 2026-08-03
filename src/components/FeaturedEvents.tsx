@@ -110,7 +110,7 @@ const FeaturedEvents = ({ visible = true }: FeaturedEventsProps) => {
                   </span>
                   <span className="flex items-center gap-1 truncate">
                     <MapPin className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
-                    {event.description || "Event Venue"}
+                    {event.venue || "Event Venue"}
                   </span>
                 </div>
                 <Button variant="gold-outline" size="sm" className="w-full text-xs md:text-sm h-8 md:h-9" onClick={() => handleEventClick(event)}>
