@@ -244,20 +244,14 @@ export const uploadMedia = async (
   return item;
 };
 
-export const deleteMedia = async (mediaId: string): Promise<boolean> => {
-  const { error } = await supabase.from("event_media").delete().eq("id", mediaId);
-  return !error;
+export const deleteMedia = async (eventId: string, mediaId: string): Promise<boolean> => {
+  const { ok } = await callEventWrite("delete_media", { eventId, mediaId });
+  return ok;
 };
 
 export const clearEventMedia = async (eventId: string): Promise<boolean> => {
-  const { error } = await supabase.from("event_media").delete().eq("event_id", eventId);
-  if (error) return false;
-  const { data: files } = await supabase.storage.from("event-media").list(eventId);
-  if (files && files.length > 0) {
-    const paths = files.map((f) => `${eventId}/${f.name}`);
-    await supabase.storage.from("event-media").remove(paths);
-  }
-  return true;
+  const { ok } = await callEventWrite("clear_media", { eventId });
+  return ok;
 };
 
 // ── Showcase media (admin-uploaded photos/videos for event page) ──
