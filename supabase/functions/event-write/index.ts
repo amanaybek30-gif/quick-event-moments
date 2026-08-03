@@ -36,6 +36,7 @@ const EVENT_FIELDS = [
   "name",
   "date",
   "description",
+  "venue",
   "cover_image",
   "welcome_message",
   "welcome_title",
