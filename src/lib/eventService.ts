@@ -149,10 +149,8 @@ export const updateEventImages = async (
 
 export const uploadCoverImage = async (eventId: string, file: File): Promise<string | null> => {
   const ext = file.name.split(".").pop() || "jpg";
-  const path = `${eventId}/cover.${ext}`;
-  const { error } = await supabase.storage
-    .from("event-covers")
-    .upload(path, file, { upsert: true });
+  const path = `${eventId}/cover-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("event-covers").upload(path, file);
   if (error) {
     console.error("Cover upload error:", error);
     return null;
@@ -163,17 +161,14 @@ export const uploadCoverImage = async (eventId: string, file: File): Promise<str
 
 export const uploadWelcomeBackgroundImage = async (eventId: string, file: File): Promise<string | null> => {
   const ext = file.name.split(".").pop() || "jpg";
-  const path = `${eventId}/welcome-bg.${ext}`;
-  const { error } = await supabase.storage
-    .from("event-covers")
-    .upload(path, file, { upsert: true });
+  const path = `${eventId}/welcome-bg-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("event-covers").upload(path, file);
   if (error) {
     console.error("Welcome background upload error:", error);
     return null;
   }
   const { data } = supabase.storage.from("event-covers").getPublicUrl(path);
-  // Bust browser cache when re-uploading
-  return `${data.publicUrl}?t=${Date.now()}`;
+  return data.publicUrl;
 };
 
 export interface MediaItem {
