@@ -42,8 +42,7 @@ import {
   uploadCoverImage,
   uploadWelcomeBackgroundImage,
   uploadShowcaseMedia,
-  updateEventImages,
-  updateEventWelcome,
+  updateEventDetails,
   type EventData,
 } from "@/lib/eventService";
 
@@ -52,7 +51,7 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const [events, setEvents] = useState<EventData[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [newEvent, setNewEvent] = useState({ name: "", date: "", description: "", password: "", welcomeTitle: "Welcome!", welcomeMessage: "" });
+  const [newEvent, setNewEvent] = useState({ name: "", date: "", venue: "", password: "", welcomeTitle: "Welcome!", welcomeMessage: "" });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [welcomeBgFile, setWelcomeBgFile] = useState<File | null>(null);
@@ -70,6 +69,9 @@ const AdminDashboard = () => {
   const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
   const [editWelcomeBgFile, setEditWelcomeBgFile] = useState<File | null>(null);
   const [editWelcomeBgPreview, setEditWelcomeBgPreview] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editVenue, setEditVenue] = useState("");
   const [editTitle, setEditTitle] = useState("Welcome!");
   const [editMessage, setEditMessage] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -175,7 +177,7 @@ const AdminDashboard = () => {
       id: eventId,
       name: newEvent.name,
       date: newEvent.date,
-      description: newEvent.description,
+      venue: newEvent.venue,
       cover_image: coverUrl,
       uploads: 0,
       contributors: 0,
@@ -192,7 +194,7 @@ const AdminDashboard = () => {
       }
 
       setEvents([eventData, ...events]);
-      setNewEvent({ name: "", date: "", description: "", password: "", welcomeTitle: "Welcome!", welcomeMessage: "" });
+      setNewEvent({ name: "", date: "", venue: "", password: "", welcomeTitle: "Welcome!", welcomeMessage: "" });
       setCoverFile(null);
       setCoverPreview(null);
       setWelcomeBgFile(null);
@@ -215,6 +217,9 @@ const AdminDashboard = () => {
     setEditCoverPreview(ev.cover_image || null);
     setEditWelcomeBgFile(null);
     setEditWelcomeBgPreview(ev.welcome_background_image || null);
+    setEditName(ev.name);
+    setEditDate(ev.date);
+    setEditVenue(ev.venue || "");
     setEditTitle(ev.welcome_title || "Welcome!");
     setEditMessage(ev.welcome_message || "");
   };
@@ -241,31 +246,25 @@ const AdminDashboard = () => {
     if (!editingEvent) return;
     setSavingEdit(true);
     try {
-      const updates: { cover_image?: string; welcome_background_image?: string | null } = {};
+      const updates: Record<string, unknown> = {
+        name: editName,
+        date: editDate,
+        venue: editVenue,
+        welcome_title: editTitle || "Welcome!",
+        welcome_message: editMessage || null,
+      };
       if (editCoverFile) {
         const url = await uploadCoverImage(editingEvent.id, editCoverFile);
-        if (url) updates.cover_image = `${url}?t=${Date.now()}`;
+        if (url) updates.cover_image = url;
       }
       if (editWelcomeBgFile) {
         const url = await uploadWelcomeBackgroundImage(editingEvent.id, editWelcomeBgFile);
         if (url) updates.welcome_background_image = url;
       }
-      if (Object.keys(updates).length > 0) {
-        await updateEventImages(editingEvent.id, updates);
-      }
-      await updateEventWelcome(editingEvent.id, editTitle || "Welcome!", editMessage);
+      await updateEventDetails(editingEvent.id, updates);
 
       setEvents((prev) =>
-        prev.map((e) =>
-          e.id === editingEvent.id
-            ? {
-                ...e,
-                ...updates,
-                welcome_title: editTitle || "Welcome!",
-                welcome_message: editMessage || null,
-              }
-            : e
-        )
+        prev.map((e) => (e.id === editingEvent.id ? ({ ...e, ...updates } as EventData) : e))
       );
       toast({ title: "Event updated" });
       setEditingEvent(null);
@@ -316,7 +315,7 @@ const AdminDashboard = () => {
                 <form onSubmit={handleCreateEvent} className="space-y-4 mt-2">
                   <Input placeholder="Event name" value={newEvent.name} onChange={(e) => setNewEvent({ ...newEvent, name: e.target.value })} className="h-12 font-body" required />
                   <Input type="date" value={newEvent.date} onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })} className="h-12 font-body" required />
-                  <Textarea placeholder="Description (optional)" value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })} className="font-body" />
+                  <Input placeholder="Venue / location" value={newEvent.venue} onChange={(e) => setNewEvent({ ...newEvent, venue: e.target.value })} className="h-12 font-body" required />
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input placeholder="Event password (for organizers)" value={newEvent.password} onChange={(e) => setNewEvent({ ...newEvent, password: e.target.value })} className="pl-10 h-12 font-body" required />
@@ -521,9 +520,21 @@ const AdminDashboard = () => {
       <Dialog open={!!editingEvent} onOpenChange={(open) => !open && setEditingEvent(null)}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">Edit Event Visuals</DialogTitle>
+            <DialogTitle className="font-display text-xl">Edit Event</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
+            <div>
+              <label className="block text-sm font-body text-muted-foreground mb-1">Event Name</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-11 font-body" />
+            </div>
+            <div>
+              <label className="block text-sm font-body text-muted-foreground mb-1">Event Date</label>
+              <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-11 font-body" />
+            </div>
+            <div>
+              <label className="block text-sm font-body text-muted-foreground mb-1">Venue</label>
+              <Input value={editVenue} onChange={(e) => setEditVenue(e.target.value)} placeholder="Venue / location" className="h-11 font-body" />
+            </div>
             <div>
               <label className="block text-sm font-body text-muted-foreground mb-1">Welcome Title</label>
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="h-11 font-body" />
