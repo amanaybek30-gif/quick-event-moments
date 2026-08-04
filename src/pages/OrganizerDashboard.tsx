@@ -403,10 +403,10 @@ const OrganizerDashboard = () => {
           </DialogContent>
         </Dialog>
 
-        <div className="flex gap-3 mb-8">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           <Dialog open={qrOpen} onOpenChange={setQrOpen}>
             <DialogTrigger asChild>
-              <Button variant="gold" className="flex-1"><QrCode className="w-4 h-4 mr-2" /> QR Code</Button>
+              <Button variant="gold-outline" className="h-11 w-full rounded-lg font-body"><QrCode className="w-4 h-4 mr-2" /> QR Code</Button>
             </DialogTrigger>
             <DialogContent className="max-w-sm text-center">
               <DialogHeader>
