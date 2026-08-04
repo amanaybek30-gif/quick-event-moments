@@ -91,8 +91,10 @@ const OrganizerDashboard = () => {
       sessionStorage.setItem(`organizer_auth_${eventId}`, "true");
       setCurrentPw(passwordInput);
       toast({ title: "Access granted!", description: "Welcome to the event dashboard." });
-      if (sessionStorage.getItem(`pw_prompt_${eventId}`) !== "1") {
-        sessionStorage.setItem(`pw_prompt_${eventId}`, "1");
+      const key = `pw_prompt_count_${eventId}`;
+      const count = Number(localStorage.getItem(key) || "0");
+      if (count < 2) {
+        localStorage.setItem(key, String(count + 1));
         setPwPromptOpen(true);
       }
     } else {
@@ -351,18 +353,14 @@ const OrganizerDashboard = () => {
         </motion.div>
 
         {/* Host capture actions */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <Button variant="gold" onClick={() => navigate(`/event/${eventId}?capture=camera`)}>
-            <Camera className="w-4 h-4 mr-2" /> Open Camera
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={() => navigate(`/event/${eventId}?capture=camera`)}>
+            <Camera className="w-4 h-4 mr-2" /> Camera
           </Button>
-          <Button variant="gold-outline" onClick={() => navigate(`/event/${eventId}?capture=upload`)}>
-            <Upload className="w-4 h-4 mr-2" /> Upload Files
+          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={() => navigate(`/event/${eventId}?capture=upload`)}>
+            <Upload className="w-4 h-4 mr-2" /> Upload
           </Button>
         </div>
-
-        <Button variant="outline" className="w-full mb-4" onClick={() => setPwDialogOpen(true)}>
-          <KeyRound className="w-4 h-4 mr-2" /> Change Event Password
-        </Button>
 
         {/* Change password prompt */}
         <Dialog open={pwPromptOpen} onOpenChange={setPwPromptOpen}>
@@ -401,10 +399,10 @@ const OrganizerDashboard = () => {
           </DialogContent>
         </Dialog>
 
-        <div className="flex gap-3 mb-8">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           <Dialog open={qrOpen} onOpenChange={setQrOpen}>
             <DialogTrigger asChild>
-              <Button variant="gold" className="flex-1"><QrCode className="w-4 h-4 mr-2" /> QR Code</Button>
+              <Button variant="gold-outline" className="h-11 w-full rounded-lg font-body"><QrCode className="w-4 h-4 mr-2" /> QR Code</Button>
             </DialogTrigger>
             <DialogContent className="max-w-sm text-center">
               <DialogHeader>
@@ -427,13 +425,13 @@ const OrganizerDashboard = () => {
               </div>
             </DialogContent>
           </Dialog>
-          <Button variant="gold-outline" className="flex-1" onClick={copyLink}><Share2 className="w-4 h-4 mr-2" /> Share Link</Button>
+          <Button variant="gold-outline" className="h-11 rounded-lg font-body" onClick={copyLink}><Share2 className="w-4 h-4 mr-2" /> Share Link</Button>
         </div>
 
-        <div className="flex gap-3 mb-8">
+        <div className={`grid ${mediaItems.length > 0 ? "grid-cols-3" : "grid-cols-2"} gap-2 mb-8`}>
           <Dialog open={imagesDialogOpen} onOpenChange={(o) => (o ? openImagesDialog() : setImagesDialogOpen(false))}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="flex-1"><Pencil className="w-4 h-4 mr-2" /> Edit Event</Button>
+              <Button variant="outline" className="h-11 rounded-lg font-body"><Pencil className="w-4 h-4 mr-2" /> Edit</Button>
             </DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -491,9 +489,13 @@ const OrganizerDashboard = () => {
             </DialogContent>
           </Dialog>
 
+          <Button variant="outline" className="h-11 rounded-lg font-body" onClick={() => setPwDialogOpen(true)}>
+            <KeyRound className="w-4 h-4 mr-2" /> Password
+          </Button>
+
           {mediaItems.length > 0 && (
-            <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleClearGallery}>
-              <Trash2 className="w-4 h-4 mr-2" /> Clear Gallery
+            <Button variant="outline" className="h-11 rounded-lg font-body text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleClearGallery}>
+              <Trash2 className="w-4 h-4 mr-2" /> Clear
             </Button>
           )}
         </div>
