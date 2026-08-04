@@ -493,9 +493,13 @@ const OrganizerDashboard = () => {
             </DialogContent>
           </Dialog>
 
+          <Button variant="outline" className="h-11 rounded-lg font-body" onClick={() => setPwDialogOpen(true)}>
+            <KeyRound className="w-4 h-4 mr-2" /> Password
+          </Button>
+
           {mediaItems.length > 0 && (
-            <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleClearGallery}>
-              <Trash2 className="w-4 h-4 mr-2" /> Clear Gallery
+            <Button variant="outline" className="h-11 rounded-lg font-body text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleClearGallery}>
+              <Trash2 className="w-4 h-4 mr-2" /> Clear
             </Button>
           )}
         </div>
