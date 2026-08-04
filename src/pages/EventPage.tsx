@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Camera, Upload, Video, ArrowLeft, User, Eye, SwitchCamera, ChevronLeft, ChevronRight, ChevronDown, X, Play, Pause, Maximize, ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -176,6 +176,7 @@ const ShowcaseCarousel = ({ items }: { items: ShowcaseMediaItem[] }) => {
 const EventPage = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<ViewState>("landing");
   const [guestName, setGuestName] = useState("");
   const [capturedCount, setCapturedCount] = useState(0);
