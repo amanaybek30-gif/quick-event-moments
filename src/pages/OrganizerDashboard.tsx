@@ -432,10 +432,10 @@ const OrganizerDashboard = () => {
           <Button variant="gold-outline" className="flex-1" onClick={copyLink}><Share2 className="w-4 h-4 mr-2" /> Share Link</Button>
         </div>
 
-        <div className="flex gap-3 mb-8">
+        <div className={`grid ${mediaItems.length > 0 ? "grid-cols-3" : "grid-cols-2"} gap-2 mb-8`}>
           <Dialog open={imagesDialogOpen} onOpenChange={(o) => (o ? openImagesDialog() : setImagesDialogOpen(false))}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="flex-1"><Pencil className="w-4 h-4 mr-2" /> Edit Event</Button>
+              <Button variant="outline" className="h-11 rounded-lg font-body"><Pencil className="w-4 h-4 mr-2" /> Edit</Button>
             </DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
