@@ -91,8 +91,10 @@ const OrganizerDashboard = () => {
       sessionStorage.setItem(`organizer_auth_${eventId}`, "true");
       setCurrentPw(passwordInput);
       toast({ title: "Access granted!", description: "Welcome to the event dashboard." });
-      if (sessionStorage.getItem(`pw_prompt_${eventId}`) !== "1") {
-        sessionStorage.setItem(`pw_prompt_${eventId}`, "1");
+      const key = `pw_prompt_count_${eventId}`;
+      const count = Number(localStorage.getItem(key) || "0");
+      if (count < 2) {
+        localStorage.setItem(key, String(count + 1));
         setPwPromptOpen(true);
       }
     } else {
