@@ -278,6 +278,20 @@ const EventPage = () => {
     return () => { cancelled = true; };
   }, [eventId]);
 
+  // Deep link from the organizer dashboard: ?capture=camera | upload | gallery
+  useEffect(() => {
+    if (loading || !event) return;
+    const capture = searchParams.get("capture");
+    if (!capture) return;
+    setSearchParams({}, { replace: true });
+    if (capture === "camera") void openCamera("photo");
+    else if (capture === "upload") handleFileUpload();
+    else if (capture === "gallery") setView("gallery");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, event]);
+
+
+
   useEffect(() => {
     return () => {
       if (recordingTimeoutRef.current) window.clearTimeout(recordingTimeoutRef.current);
