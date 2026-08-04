@@ -409,7 +409,7 @@ const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: Med
             {selectedItem.type === "video" ? (
               <video src={selectedItem.url} controls autoPlay className="max-w-full max-h-[80vh] rounded-lg" onClick={(e) => e.stopPropagation()} />
             ) : (
-              <img src={selectedItem.url} alt="Full view" className="max-w-full max-h-[80vh] rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
+              <ZoomableImage key={selectedItem.id} src={selectedItem.url} />
             )}
           </div>
 
