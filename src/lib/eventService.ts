@@ -79,6 +79,21 @@ export const verifyEventPassword = async (eventId: string, password: string): Pr
   return valid;
 };
 
+// Change the event (host) password. Hosts must supply the current password.
+export const changeEventPassword = async (
+  eventId: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<boolean> => {
+  const { ok } = await callEventWrite("change_password", {
+    eventId,
+    currentPassword,
+    newPassword,
+  });
+  if (ok) storeEventPassword(eventId, newPassword);
+  return ok;
+};
+
 
 
 
