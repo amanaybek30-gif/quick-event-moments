@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Download, QrCode, Upload, Users,
-  Image as ImageIcon, Share2, Lock, Trash2, Pencil,
+  Image as ImageIcon, Share2, Lock, Trash2, Pencil, Camera, KeyRound,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import MediaGallery from "@/components/MediaGallery";
 import {
-  fetchEventById, fetchEventMedia, deleteMedia,
+  fetchEventById, fetchEventMedia, deleteMedia, changeEventPassword,
   clearEventMedia, updateEventQrEnabled,
   updateEventDetails, uploadCoverImage, uploadWelcomeBackgroundImage,
   verifyEventPassword,
@@ -45,6 +45,12 @@ const OrganizerDashboard = () => {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [welcomeBgPreview, setWelcomeBgPreview] = useState<string | null>(null);
   const [savingImages, setSavingImages] = useState(false);
+  const [pwPromptOpen, setPwPromptOpen] = useState(false);
+  const [pwDialogOpen, setPwDialogOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [savingPw, setSavingPw] = useState(false);
 
   useEffect(() => {
     if (!eventId) return;
@@ -83,7 +89,12 @@ const OrganizerDashboard = () => {
     if (ok) {
       setAuthenticated(true);
       sessionStorage.setItem(`organizer_auth_${eventId}`, "true");
+      setCurrentPw(passwordInput);
       toast({ title: "Access granted!", description: "Welcome to the event dashboard." });
+      if (sessionStorage.getItem(`pw_prompt_${eventId}`) !== "1") {
+        sessionStorage.setItem(`pw_prompt_${eventId}`, "1");
+        setPwPromptOpen(true);
+      }
     } else {
       toast({ title: "Wrong password", description: "Please try again.", variant: "destructive" });
     }
@@ -117,6 +128,30 @@ const OrganizerDashboard = () => {
     } else {
       setQrEnabled(!enabled);
       toast({ title: "Failed to update", variant: "destructive" });
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!eventId) return;
+    if (newPw.length < 6) {
+      toast({ title: "New password must be at least 6 characters", variant: "destructive" });
+      return;
+    }
+    if (newPw !== confirmPw) {
+      toast({ title: "Passwords do not match", variant: "destructive" });
+      return;
+    }
+    setSavingPw(true);
+    const ok = await changeEventPassword(eventId, currentPw, newPw);
+    setSavingPw(false);
+    if (ok) {
+      toast({ title: "Password changed", description: "Use the new password to enter this event." });
+      setPwDialogOpen(false);
+      setCurrentPw(newPw);
+      setNewPw("");
+      setConfirmPw("");
+    } else {
+      toast({ title: "Could not change password", description: "Check your current password and try again.", variant: "destructive" });
     }
   };
 
@@ -314,6 +349,57 @@ const OrganizerDashboard = () => {
           </div>
           <Switch checked={qrEnabled} onCheckedChange={handleToggleQr} />
         </motion.div>
+
+        {/* Host capture actions */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <Button variant="gold" onClick={() => navigate(`/event/${eventId}?capture=camera`)}>
+            <Camera className="w-4 h-4 mr-2" /> Open Camera
+          </Button>
+          <Button variant="gold-outline" onClick={() => navigate(`/event/${eventId}?capture=upload`)}>
+            <Upload className="w-4 h-4 mr-2" /> Upload Files
+          </Button>
+        </div>
+
+        <Button variant="outline" className="w-full mb-4" onClick={() => setPwDialogOpen(true)}>
+          <KeyRound className="w-4 h-4 mr-2" /> Change Event Password
+        </Button>
+
+        {/* Change password prompt */}
+        <Dialog open={pwPromptOpen} onOpenChange={setPwPromptOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-display text-xl">Do you want to change your password?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground font-body">
+              You can set a new password guests and hosts will use to enter this event dashboard.
+            </p>
+            <div className="flex gap-3 mt-4">
+              <Button variant="gold" className="flex-1" onClick={() => { setPwPromptOpen(false); setPwDialogOpen(true); }}>
+                Change Password
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setPwPromptOpen(false)}>
+                Don't Change Password
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Change password form */}
+        <Dialog open={pwDialogOpen} onOpenChange={setPwDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-display text-xl">Change Password</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 mt-2">
+              <Input type="password" placeholder="Current password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} className="font-body h-11" />
+              <Input type="password" placeholder="New password" value={newPw} onChange={(e) => setNewPw(e.target.value)} className="font-body h-11" />
+              <Input type="password" placeholder="Confirm new password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="font-body h-11" />
+              <Button variant="gold" className="w-full" onClick={handleChangePassword} disabled={savingPw}>
+                {savingPw ? "Saving..." : "Save New Password"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <div className="flex gap-3 mb-8">
           <Dialog open={qrOpen} onOpenChange={setQrOpen}>

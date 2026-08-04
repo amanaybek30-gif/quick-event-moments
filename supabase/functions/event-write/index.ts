@@ -212,6 +212,27 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
+      case "change_password": {
+        if (!eventId) return json({ error: "Invalid request" }, 400);
+        const currentPassword = str(body.currentPassword, 200);
+        const newPassword = str(body.newPassword, 200);
+        if (!newPassword || newPassword.length < 6) {
+          return json({ error: "New password must be at least 6 characters" }, 400);
+        }
+        // Admin may change without knowing the current password; hosts must provide it.
+        if (!admin_ok) {
+          if (!currentPassword || !(await isHost(eventId, currentPassword))) {
+            return json({ error: "Current password is incorrect" }, 401);
+          }
+        }
+        const { error } = await admin
+          .from("events")
+          .update({ password: newPassword })
+          .eq("id", eventId);
+        if (error) return json({ error: "Could not change password" }, 400);
+        return json({ ok: true });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }

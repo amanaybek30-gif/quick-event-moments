@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Filter, Image as ImageIcon, Video, X, Trash2, ChevronLeft, ChevronRight, Save, Share2, CheckSquare, Square, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -114,6 +114,133 @@ const saveToGalleryViaShare = async (items: MediaItem[]) => {
 };
 
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+/** Full-screen image viewer with pinch, wheel and double-tap zoom + panning. */
+const ZoomableImage = ({ src }: { src: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const stateRef = useRef({ scale: 1, offset: { x: 0, y: 0 } });
+  stateRef.current = { scale, offset };
+
+  const pinch = useRef<{ dist: number; scale: number } | null>(null);
+  const pan = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const lastTap = useRef(0);
+
+  const clampScale = (s: number) => Math.min(6, Math.max(1, s));
+
+  const zoomAt = useCallback((nextScaleRaw: number, px: number, py: number) => {
+    const { scale: s, offset: o } = stateRef.current;
+    const next = clampScale(nextScaleRaw);
+    const k = next / s;
+    const nx = px - (px - o.x) * k;
+    const ny = py - (py - o.y) * k;
+    setScale(next);
+    setOffset(next === 1 ? { x: 0, y: 0 } : { x: nx, y: ny });
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      zoomAt(
+        stateRef.current.scale * Math.exp(-dy * 0.0015),
+        e.clientX - rect.left,
+        e.clientY - rect.top
+      );
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [zoomAt]);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinch.current = { dist: Math.hypot(dx, dy), scale: stateRef.current.scale };
+      pan.current = null;
+    } else if (e.touches.length === 1 && stateRef.current.scale > 1) {
+      pan.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        ox: stateRef.current.offset.x,
+        oy: stateRef.current.offset.y,
+      };
+    }
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const el = containerRef.current;
+    if (e.touches.length === 2 && pinch.current && el) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const rect = el.getBoundingClientRect();
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+      zoomAt(pinch.current.scale * (dist / pinch.current.dist), cx, cy);
+    } else if (e.touches.length === 1 && pan.current) {
+      setOffset({
+        x: pan.current.ox + (e.touches[0].clientX - pan.current.x),
+        y: pan.current.oy + (e.touches[0].clientY - pan.current.y),
+      });
+    }
+  };
+
+  const onTouchEnd = () => {
+    pinch.current = null;
+    pan.current = null;
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      zoomAt(stateRef.current.scale > 1 ? 1 : 2.5, e.clientX - rect.left, e.clientY - rect.top);
+    }
+    lastTap.current = now;
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-full flex items-center justify-center overflow-hidden select-none"
+      style={{ touchAction: "none" }}
+      onClick={handleClick}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onDoubleClick={(e) => e.stopPropagation()}
+    >
+      <img
+        src={src}
+        alt="Full view"
+        draggable={false}
+        className="max-w-full max-h-[85vh] rounded-lg object-contain"
+        style={{
+          transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+          transformOrigin: "0 0",
+          transition: pinch.current || pan.current ? "none" : "transform 0.15s ease-out",
+          cursor: scale > 1 ? "grab" : "zoom-in",
+        }}
+      />
+      {scale > 1 && (
+        <button
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/60 text-white text-xs font-body"
+          onClick={(e) => { e.stopPropagation(); setScale(1); setOffset({ x: 0, y: 0 }); }}
+        >
+          Reset zoom ({scale.toFixed(1)}×)
+        </button>
+      )}
+    </div>
+  );
+};
 
 const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: MediaGalleryProps) => {
   const [filter, setFilter] = useState<MediaType>("all");
@@ -409,7 +536,7 @@ const MediaGallery = ({ extraMedia = [], canDelete = false, onDeleteMedia }: Med
             {selectedItem.type === "video" ? (
               <video src={selectedItem.url} controls autoPlay className="max-w-full max-h-[80vh] rounded-lg" onClick={(e) => e.stopPropagation()} />
             ) : (
-              <img src={selectedItem.url} alt="Full view" className="max-w-full max-h-[80vh] rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
+              <ZoomableImage key={selectedItem.id} src={selectedItem.url} />
             )}
           </div>
 

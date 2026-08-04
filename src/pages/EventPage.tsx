@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Camera, Upload, Video, ArrowLeft, User, Eye, SwitchCamera, ChevronLeft, ChevronRight, ChevronDown, X, Play, Pause, Maximize, ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -176,6 +176,7 @@ const ShowcaseCarousel = ({ items }: { items: ShowcaseMediaItem[] }) => {
 const EventPage = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<ViewState>("landing");
   const [guestName, setGuestName] = useState("");
   const [capturedCount, setCapturedCount] = useState(0);
@@ -277,6 +278,20 @@ const EventPage = () => {
     load();
     return () => { cancelled = true; };
   }, [eventId]);
+
+  // Deep link from the organizer dashboard: ?capture=camera | upload | gallery
+  useEffect(() => {
+    if (loading || !event) return;
+    const capture = searchParams.get("capture");
+    if (!capture) return;
+    setSearchParams({}, { replace: true });
+    if (capture === "camera") void openCamera("photo");
+    else if (capture === "upload") handleFileUpload();
+    else if (capture === "gallery") setView("gallery");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, event]);
+
+
 
   useEffect(() => {
     return () => {
