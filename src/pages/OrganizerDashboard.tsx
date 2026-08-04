@@ -353,18 +353,14 @@ const OrganizerDashboard = () => {
         </motion.div>
 
         {/* Host capture actions */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <Button variant="gold" onClick={() => navigate(`/event/${eventId}?capture=camera`)}>
-            <Camera className="w-4 h-4 mr-2" /> Open Camera
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={() => navigate(`/event/${eventId}?capture=camera`)}>
+            <Camera className="w-4 h-4 mr-2" /> Camera
           </Button>
-          <Button variant="gold-outline" onClick={() => navigate(`/event/${eventId}?capture=upload`)}>
-            <Upload className="w-4 h-4 mr-2" /> Upload Files
+          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={() => navigate(`/event/${eventId}?capture=upload`)}>
+            <Upload className="w-4 h-4 mr-2" /> Upload
           </Button>
         </div>
-
-        <Button variant="outline" className="w-full mb-4" onClick={() => setPwDialogOpen(true)}>
-          <KeyRound className="w-4 h-4 mr-2" /> Change Event Password
-        </Button>
 
         {/* Change password prompt */}
         <Dialog open={pwPromptOpen} onOpenChange={setPwPromptOpen}>
