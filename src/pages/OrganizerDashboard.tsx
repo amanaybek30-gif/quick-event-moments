@@ -429,7 +429,7 @@ const OrganizerDashboard = () => {
               </div>
             </DialogContent>
           </Dialog>
-          <Button variant="gold-outline" className="flex-1" onClick={copyLink}><Share2 className="w-4 h-4 mr-2" /> Share Link</Button>
+          <Button variant="gold-outline" className="h-11 rounded-lg font-body" onClick={copyLink}><Share2 className="w-4 h-4 mr-2" /> Share Link</Button>
         </div>
 
         <div className={`grid ${mediaItems.length > 0 ? "grid-cols-3" : "grid-cols-2"} gap-2 mb-8`}>
