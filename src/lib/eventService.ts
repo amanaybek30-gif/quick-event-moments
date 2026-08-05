@@ -100,7 +100,7 @@ export const changeEventPassword = async (
 export const fetchAllEvents = async (): Promise<EventData[]> => {
   const { data, error } = await supabase
     .from("events")
-    .select("*")
+    .select("id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,created_at")
     .order("created_at", { ascending: false });
   if (error) {
     console.error("Error fetching events:", error);
@@ -112,7 +112,7 @@ export const fetchAllEvents = async (): Promise<EventData[]> => {
 export const fetchEventById = async (eventId: string): Promise<EventData | null> => {
   const { data, error } = await supabase
     .from("events")
-    .select("*")
+    .select("id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,created_at")
     .eq("id", eventId)
     .maybeSingle();
   if (error || !data) return null;
