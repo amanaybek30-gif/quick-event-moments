@@ -15,13 +15,16 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import MediaGallery from "@/components/MediaGallery";
+import HostCameraOverlay from "@/components/HostCameraOverlay";
+import { compressImage, compressVideo } from "@/lib/mediaCompression";
 import {
   fetchEventById, fetchEventMedia, deleteMedia, changeEventPassword,
-  clearEventMedia, updateEventQrEnabled,
+  clearEventMedia, updateEventQrEnabled, uploadMedia,
   updateEventDetails, uploadCoverImage, uploadWelcomeBackgroundImage,
   verifyEventPassword,
   type EventData, type MediaItem,
 } from "@/lib/eventService";
+
 
 const OrganizerDashboard = () => {
   const { eventId } = useParams();
@@ -51,6 +54,44 @@ const OrganizerDashboard = () => {
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [savingPw, setSavingPw] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [hostUploading, setHostUploading] = useState(false);
+
+  const handleHostUpload = () => {
+    if (!eventId) return;
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*,video/*";
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (!files || files.length === 0) return;
+      setHostUploading(true);
+      const uploaded = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const type = file.type.startsWith("video") ? ("video" as const) : ("image" as const);
+          try {
+            const compressed = type === "image" ? await compressImage(file) : await compressVideo(file);
+            return await uploadMedia(eventId, compressed, type, "Host");
+          } catch {
+            return null;
+          }
+        })
+      );
+      const items = uploaded.filter(Boolean) as MediaItem[];
+      if (items.length) {
+        setMediaItems((prev) => [...items.filter((i) => !prev.some((m) => m.id === i.id)), ...prev]);
+      }
+      setHostUploading(false);
+      toast({
+        title: items.length ? "Upload complete" : "Upload failed",
+        description: items.length ? `${items.length} file(s) added to the gallery.` : "Please try again.",
+        variant: items.length ? undefined : "destructive",
+      });
+    };
+    input.click();
+  };
+
 
   useEffect(() => {
     if (!eventId) return;
@@ -354,13 +395,25 @@ const OrganizerDashboard = () => {
 
         {/* Host capture actions */}
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={() => navigate(`/event/${eventId}?capture=camera`)}>
+          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={() => setCameraOpen(true)}>
             <Camera className="w-4 h-4 mr-2" /> Camera
           </Button>
-          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={() => navigate(`/event/${eventId}?capture=upload`)}>
-            <Upload className="w-4 h-4 mr-2" /> Upload
+          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={handleHostUpload} disabled={hostUploading}>
+            <Upload className="w-4 h-4 mr-2" /> {hostUploading ? "Uploading..." : "Upload"}
           </Button>
         </div>
+
+        {cameraOpen && eventId && (
+          <HostCameraOverlay
+            eventId={eventId}
+            uploaderName="Host"
+            onClose={() => setCameraOpen(false)}
+            onUploaded={(item) =>
+              setMediaItems((prev) => (prev.some((m) => m.id === item.id) ? prev : [item, ...prev]))
+            }
+          />
+        )}
+
 
         {/* Change password prompt */}
         <Dialog open={pwPromptOpen} onOpenChange={setPwPromptOpen}>
