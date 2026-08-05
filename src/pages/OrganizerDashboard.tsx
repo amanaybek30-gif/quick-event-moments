@@ -15,13 +15,16 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import MediaGallery from "@/components/MediaGallery";
+import HostCameraOverlay from "@/components/HostCameraOverlay";
+import { compressImage, compressVideo } from "@/lib/mediaCompression";
 import {
   fetchEventById, fetchEventMedia, deleteMedia, changeEventPassword,
-  clearEventMedia, updateEventQrEnabled,
+  clearEventMedia, updateEventQrEnabled, uploadMedia,
   updateEventDetails, uploadCoverImage, uploadWelcomeBackgroundImage,
   verifyEventPassword,
   type EventData, type MediaItem,
 } from "@/lib/eventService";
+
 
 const OrganizerDashboard = () => {
   const { eventId } = useParams();
