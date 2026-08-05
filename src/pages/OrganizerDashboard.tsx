@@ -354,13 +354,25 @@ const OrganizerDashboard = () => {
 
         {/* Host capture actions */}
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={() => navigate(`/event/${eventId}?capture=camera`)}>
+          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={() => setCameraOpen(true)}>
             <Camera className="w-4 h-4 mr-2" /> Camera
           </Button>
-          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={() => navigate(`/event/${eventId}?capture=upload`)}>
-            <Upload className="w-4 h-4 mr-2" /> Upload
+          <Button variant="gold" className="h-11 rounded-lg font-body" onClick={handleHostUpload} disabled={hostUploading}>
+            <Upload className="w-4 h-4 mr-2" /> {hostUploading ? "Uploading..." : "Upload"}
           </Button>
         </div>
+
+        {cameraOpen && eventId && (
+          <HostCameraOverlay
+            eventId={eventId}
+            uploaderName="Host"
+            onClose={() => setCameraOpen(false)}
+            onUploaded={(item) =>
+              setMediaItems((prev) => (prev.some((m) => m.id === item.id) ? prev : [item, ...prev]))
+            }
+          />
+        )}
+
 
         {/* Change password prompt */}
         <Dialog open={pwPromptOpen} onOpenChange={setPwPromptOpen}>
