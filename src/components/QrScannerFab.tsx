@@ -5,7 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import jsQR from "jsqr";
 
-const QrScannerFab = () => {
+interface QrScannerFabProps {
+  /** "fab" floats bottom-right; "inline" renders a compact pill button in flow */
+  variant?: "fab" | "inline";
+  label?: string;
+}
+
+const QrScannerFab = ({ variant = "fab", label = "Scan QR" }: QrScannerFabProps) => {
   const [scanning, setScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
