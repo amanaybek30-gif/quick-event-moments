@@ -32,6 +32,26 @@ const isHost = async (eventId: unknown, pw: unknown) => {
   return !!data;
 };
 
+// Resolves the signed-in user (if any) from the request's bearer token.
+const getUserId = async (req: Request): Promise<string | null> => {
+  const auth = req.headers.get("Authorization") || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!token) return null;
+  const { data, error } = await admin.auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user.id;
+};
+
+const isOwner = async (eventId: unknown, userId: string | null) => {
+  if (!userId || typeof eventId !== "string") return false;
+  const { data } = await admin
+    .from("events")
+    .select("owner_id")
+    .eq("id", eventId)
+    .maybeSingle();
+  return !!data && data.owner_id === userId;
+};
+
 const EVENT_FIELDS = [
   "name",
   "date",
@@ -89,8 +109,61 @@ Deno.serve(async (req) => {
       return json({ valid: await isHost(eventId, eventPassword) });
     }
 
+    const userId = await getUserId(req);
+
+    // Claim a legacy (unowned) event with its event password
+    if (action === "claim_event") {
+      if (!eventId || typeof eventPassword !== "string") {
+        return json({ error: "Invalid request" }, 400);
+      }
+      if (!userId) return json({ error: "Sign in required" }, 401);
+      const { data: ev } = await admin
+        .from("events")
+        .select("id,owner_id,password")
+        .eq("id", eventId)
+        .maybeSingle();
+      if (!ev) return json({ error: "Event not found" }, 404);
+      if (ev.owner_id && ev.owner_id !== userId) {
+        return json({ error: "Event already claimed" }, 403);
+      }
+      if (ev.password !== eventPassword) {
+        return json({ error: "Incorrect password" }, 401);
+      }
+      const { error } = await admin
+        .from("events")
+        .update({ owner_id: userId })
+        .eq("id", eventId);
+      if (error) return json({ error: "Could not claim event" }, 400);
+      return json({ ok: true });
+    }
+
+    // Self-service creation by a signed-in user
+    if (action === "create_event_self") {
+      if (!userId) return json({ error: "Sign in required" }, 401);
+      const ev = (body.event ?? {}) as Record<string, unknown>;
+      const id = str(ev.id, 200);
+      const name = str(ev.name, 300);
+      const date = str(ev.date, 100);
+      if (!id || !name || !date) return json({ error: "Missing required event fields" }, 400);
+      const updates = pickUpdates(ev);
+      if (updates === null) return json({ error: "Invalid event fields" }, 400);
+      const { error } = await admin.from("events").insert({
+        ...updates,
+        id,
+        name,
+        date,
+        password: "",
+        owner_id: userId,
+        uploads: 0,
+        contributors: 0,
+      });
+      if (error) return json({ error: "Could not create event" }, 400);
+      return json({ ok: true });
+    }
+
     const admin_ok = isAdmin(adminPassword);
-    const host_ok = admin_ok || (await isHost(eventId, eventPassword));
+    const owner_ok = await isOwner(eventId, userId);
+    const host_ok = admin_ok || owner_ok || (await isHost(eventId, eventPassword));
 
     switch (action) {
       case "create_event": {
@@ -129,7 +202,7 @@ Deno.serve(async (req) => {
       }
 
       case "delete_event": {
-        if (!admin_ok || !eventId) return json({ error: "Unauthorized" }, 401);
+        if ((!admin_ok && !owner_ok) || !eventId) return json({ error: "Unauthorized" }, 401);
         await admin.from("event_media").delete().eq("event_id", eventId);
         await admin.from("event_showcase_media").delete().eq("event_id", eventId);
         const { error } = await admin.from("events").delete().eq("id", eventId);
@@ -220,7 +293,7 @@ Deno.serve(async (req) => {
           return json({ error: "New password must be at least 6 characters" }, 400);
         }
         // Admin may change without knowing the current password; hosts must provide it.
-        if (!admin_ok) {
+        if (!admin_ok && !owner_ok) {
           if (!currentPassword || !(await isHost(eventId, currentPassword))) {
             return json({ error: "Current password is incorrect" }, 401);
           }
