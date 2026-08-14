@@ -13,6 +13,7 @@ export interface EventData {
   uploads: number;
   contributors: number;
   created_at?: string;
+  owner_id?: string | null;
 }
 
 // Map DB row to EventData (password column is no longer readable client-side)
@@ -29,6 +30,7 @@ const mapRow = (row: any): EventData => ({
   uploads: row.uploads || 0,
   contributors: row.contributors || 0,
   created_at: row.created_at,
+  owner_id: row.owner_id ?? null,
 });
 
 // ── Secure write layer ──
@@ -37,6 +39,7 @@ const mapRow = (row: any): EventData => ({
 
 const ADMIN_PW_KEY = "mv_admin_pw";
 const eventPwKey = (eventId: string) => `mv_event_pw_${eventId}`;
+const ownerKey = (eventId: string) => `mv_owner_${eventId}`;
 
 export const storeAdminPassword = (password: string) =>
   sessionStorage.setItem(ADMIN_PW_KEY, password);
@@ -51,7 +54,14 @@ const credentials = (eventId?: string) => ({
 
 // True when the current session holds admin or host (event password) credentials
 export const hasEventAccess = (eventId: string) =>
-  !!sessionStorage.getItem(ADMIN_PW_KEY) || !!sessionStorage.getItem(eventPwKey(eventId));
+  !!sessionStorage.getItem(ADMIN_PW_KEY) ||
+  !!sessionStorage.getItem(eventPwKey(eventId)) ||
+  !!sessionStorage.getItem(ownerKey(eventId));
+
+// Marks the current session as the signed-in owner of this event (server still
+// re-verifies ownership from the auth token on every privileged write).
+export const markOwnerAccess = (eventId: string) =>
+  sessionStorage.setItem(ownerKey(eventId), "1");
 
 const callEventWrite = async <T = any>(
   action: string,
@@ -100,7 +110,7 @@ export const changeEventPassword = async (
 export const fetchAllEvents = async (): Promise<EventData[]> => {
   const { data, error } = await supabase
     .from("events")
-    .select("id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,created_at")
+    .select("id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,created_at,owner_id")
     .order("created_at", { ascending: false });
   if (error) {
     console.error("Error fetching events:", error);
@@ -112,7 +122,7 @@ export const fetchAllEvents = async (): Promise<EventData[]> => {
 export const fetchEventById = async (eventId: string): Promise<EventData | null> => {
   const { data, error } = await supabase
     .from("events")
-    .select("id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,created_at")
+    .select("id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,created_at,owner_id")
     .eq("id", eventId)
     .maybeSingle();
   if (error || !data) return null;
@@ -367,5 +377,68 @@ export const uploadShowcaseMedia = async (
 
 export const deleteShowcaseMedia = async (eventId: string, mediaId: string): Promise<boolean> => {
   const { ok } = await callEventWrite("delete_showcase", { eventId, mediaId });
+  return ok;
+};
+
+// ── Self-service ownership ──
+
+const EVENT_SELECT =
+  "id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,created_at,owner_id";
+
+/** Events created (or claimed) by the signed-in user. */
+export const fetchMyEvents = async (userId: string): Promise<EventData[]> => {
+  const { data, error } = await supabase
+    .from("events")
+    .select(EVENT_SELECT)
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return (data || []).map(mapRow);
+};
+
+/** Legacy events with no owner yet — visible to everyone until claimed. */
+export const fetchUnclaimedEvents = async (): Promise<EventData[]> => {
+  const { data, error } = await supabase
+    .from("events")
+    .select(EVENT_SELECT)
+    .is("owner_id", null)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return (data || []).map(mapRow);
+};
+
+/** Claim a legacy password-protected event with its event password. */
+export const claimEvent = async (eventId: string, password: string): Promise<boolean> => {
+  const { ok, data } = await callEventWrite<{ ok?: boolean }>("claim_event", {
+    eventId,
+    eventPassword: password,
+  });
+  if (ok) {
+    storeEventPassword(eventId, password);
+    markOwnerAccess(eventId);
+  }
+  return ok && data?.ok !== false;
+};
+
+export interface NewEventInput {
+  id: string;
+  name: string;
+  date: string;
+  venue: string;
+  cover_image: string;
+  welcome_title: string;
+  welcome_message: string;
+}
+
+/** Create an event owned by the signed-in user (no admin, no password). */
+export const createOwnedEvent = async (event: NewEventInput): Promise<boolean> => {
+  const { ok } = await callEventWrite("create_event_self", { event });
+  if (ok) markOwnerAccess(event.id);
+  return ok;
+};
+
+/** Delete an event the signed-in user owns. */
+export const deleteOwnedEvent = async (eventId: string): Promise<boolean> => {
+  const { ok } = await callEventWrite("delete_event", { eventId });
   return ok;
 };
