@@ -93,6 +93,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          owner_id: string | null
           password: string
           qr_enabled: boolean
           uploads: number | null
@@ -109,7 +110,8 @@ export type Database = {
           description?: string | null
           id: string
           name: string
-          password: string
+          owner_id?: string | null
+          password?: string
           qr_enabled?: boolean
           uploads?: number | null
           venue?: string | null
@@ -125,6 +127,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          owner_id?: string | null
           password?: string
           qr_enabled?: boolean
           uploads?: number | null

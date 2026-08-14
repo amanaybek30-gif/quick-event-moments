@@ -5,7 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import jsQR from "jsqr";
 
-const QrScannerFab = () => {
+interface QrScannerFabProps {
+  /** "fab" floats bottom-right; "inline" renders a compact pill button in flow */
+  variant?: "fab" | "inline";
+  label?: string;
+}
+
+const QrScannerFab = ({ variant = "fab", label = "Scan QR" }: QrScannerFabProps) => {
   const [scanning, setScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -139,14 +145,17 @@ const QrScannerFab = () => {
 
   return (
     <>
-      {/* Floating button — bigger size */}
       <button
         onClick={startScanning}
-        className="fixed bottom-6 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full gold-gradient text-primary-foreground text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+        className={
+          variant === "fab"
+            ? "fixed bottom-24 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full gold-gradient text-primary-foreground text-sm font-semibold shadow-lg active:scale-95 transition-all duration-200"
+            : "flex items-center gap-1.5 px-3 py-2 rounded-full gold-gradient text-primary-foreground text-xs font-semibold shadow-sm active:scale-95 transition-all duration-200"
+        }
         aria-label="Scan QR Code"
       >
-        <QrCode className="w-5 h-5" />
-        <span>Scan QR</span>
+        <QrCode className={variant === "fab" ? "w-5 h-5" : "w-4 h-4"} />
+        <span>{label}</span>
       </button>
 
       {/* Scanner overlay */}
