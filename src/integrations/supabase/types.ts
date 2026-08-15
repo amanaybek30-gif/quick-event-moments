@@ -91,10 +91,13 @@ export type Database = {
           created_at: string
           date: string
           description: string | null
+          guest_limit: number
           id: string
           name: string
           owner_id: string | null
           password: string
+          payment_status: string
+          plan_price: number
           qr_enabled: boolean
           uploads: number | null
           venue: string | null
@@ -108,10 +111,13 @@ export type Database = {
           created_at?: string
           date: string
           description?: string | null
+          guest_limit?: number
           id: string
           name: string
           owner_id?: string | null
           password?: string
+          payment_status?: string
+          plan_price?: number
           qr_enabled?: boolean
           uploads?: number | null
           venue?: string | null
@@ -125,10 +131,13 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string | null
+          guest_limit?: number
           id?: string
           name?: string
           owner_id?: string | null
           password?: string
+          payment_status?: string
+          plan_price?: number
           qr_enabled?: boolean
           uploads?: number | null
           venue?: string | null
