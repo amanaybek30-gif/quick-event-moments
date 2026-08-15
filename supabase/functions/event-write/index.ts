@@ -64,6 +64,28 @@ const EVENT_FIELDS = [
   "qr_enabled",
 ] as const;
 
+// Server-side source of truth for guest tiers and pricing (in Birr).
+const GUEST_PRICING: Record<number, number | null> = {
+  10: 0,
+  25: 500,
+  50: 1000,
+  100: 1500,
+  150: 2000,
+  200: 3000,
+  201: null, // more than 200 guests -> custom price, quoted manually
+};
+
+const resolvePlan = (guests: unknown) => {
+  const g = typeof guests === "number" && Number.isInteger(guests) ? guests : 10;
+  if (!(g in GUEST_PRICING)) return null;
+  const price = GUEST_PRICING[g];
+  return {
+    guest_limit: g,
+    plan_price: price ?? 0,
+    payment_status: price === 0 ? "free" : "pending",
+  };
+};
+
 const pickUpdates = (input: Record<string, unknown>) => {
   const out: Record<string, unknown> = {};
   for (const key of EVENT_FIELDS) {
@@ -147,8 +169,11 @@ Deno.serve(async (req) => {
       if (!id || !name || !date) return json({ error: "Missing required event fields" }, 400);
       const updates = pickUpdates(ev);
       if (updates === null) return json({ error: "Invalid event fields" }, 400);
+      const plan = resolvePlan(ev.guest_limit);
+      if (!plan) return json({ error: "Invalid guest tier" }, 400);
       const { error } = await admin.from("events").insert({
         ...updates,
+        ...plan,
         id,
         name,
         date,
