@@ -134,7 +134,7 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-24">
+    <div className="min-h-[100dvh] bg-background pb-32">
       {/* Top bar */}
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur border-b border-border">
         <div className="max-w-md mx-auto w-full px-4 h-14 flex items-center justify-between">
@@ -241,7 +241,7 @@ const Home = () => {
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur border-t border-border">
-        <div className="max-w-md mx-auto w-full grid grid-cols-3 pb-[env(safe-area-inset-bottom)]">
+        <div className="max-w-md mx-auto w-full grid grid-cols-3 pt-1 pb-[calc(env(safe-area-inset-bottom)+14px)]">
           {([
             { key: "create", label: "Create", Icon: Plus },
             { key: "events", label: "My Events", Icon: Images },
