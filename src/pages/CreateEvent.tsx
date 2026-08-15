@@ -1,7 +1,14 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check, ImagePlus, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ImagePlus, Loader2, Phone, Users } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { GUEST_TIERS, PAYMENT_METHODS, SALES_PHONE, tierFor } from "@/lib/pricing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +32,7 @@ interface Draft {
   coverPreview: string;
   welcomeTitle: string;
   welcomeMessage: string;
+  guests: number;
 }
 
 const STEPS = [
@@ -33,6 +41,7 @@ const STEPS = [
   { key: "venue", bg: stepVenue, title: "Where is it taking place?", hint: "Add the venue or location." },
   { key: "cover", bg: stepCover, title: "Add a cover photo", hint: "A beautiful image for your event page." },
   { key: "welcome", bg: stepWelcome, title: "Welcome your guests", hint: "Shown full screen when guests arrive." },
+  { key: "guests", bg: stepVenue, title: "How many guests?", hint: "Swipe the dial to set your guest capacity." },
   { key: "review", bg: stepReview, title: "Ready to go live?", hint: "Review your event, then create it." },
 ] as const;
 
@@ -50,7 +59,13 @@ const CreateEvent = () => {
     coverPreview: "",
     welcomeTitle: "Welcome!",
     welcomeMessage: "",
+    guests: 10,
   });
+  const [payOpen, setPayOpen] = useState(false);
+  const [payPage, setPayPage] = useState(0);
+
+  const tier = tierFor(draft.guests);
+  const isCustom = tier.price === null;
 
   const current = STEPS[step];
 
@@ -79,6 +94,15 @@ const CreateEvent = () => {
   };
 
   const handleCreate = async () => {
+    if (isCustom) {
+      window.location.href = `tel:${SALES_PHONE}`;
+      return;
+    }
+    if (tier.price && tier.price > 0 && !payOpen) {
+      setPayPage(0);
+      setPayOpen(true);
+      return;
+    }
     setSaving(true);
     try {
       const id = `${slugify(draft.name)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -94,9 +118,15 @@ const CreateEvent = () => {
         cover_image: coverUrl,
         welcome_title: draft.welcomeTitle.trim() || "Welcome!",
         welcome_message: draft.welcomeMessage.trim(),
+        guest_limit: draft.guests,
       });
       if (!ok) throw new Error("create failed");
-      toast.success("Your event is live!");
+      setPayOpen(false);
+      toast.success(
+        tier.price && tier.price > 0
+          ? "Event created — we'll confirm your payment shortly."
+          : "Your event is live!"
+      );
       navigate(`/organizer/${id}`);
     } catch {
       toast.error("Could not create the event. Please try again.");
@@ -124,7 +154,7 @@ const CreateEvent = () => {
       </AnimatePresence>
       <div className="absolute inset-0 bg-gradient-to-b from-foreground/80 via-foreground/70 to-foreground/95" />
 
-      <div className="relative z-10 flex flex-col min-h-[100dvh] max-w-md mx-auto w-full px-5 pt-4 pb-7">
+      <div className="relative z-10 flex flex-col min-h-[100dvh] max-w-md mx-auto w-full px-5 pt-4 pb-12">
         {/* Header */}
         <div className="flex items-center gap-3">
           <button
@@ -240,6 +270,58 @@ const CreateEvent = () => {
                 </div>
               )}
 
+              {current.key === "guests" && (
+                <div>
+                  <div className="rounded-3xl bg-primary-foreground/10 border border-primary-foreground/15 p-5 text-center backdrop-blur">
+                    <Users className="w-5 h-5 text-gold mx-auto mb-2" />
+                    <p className="text-4xl font-display font-bold text-primary-foreground leading-none">
+                      {isCustom ? "200+" : draft.guests}
+                    </p>
+                    <p className="text-xs text-primary-foreground/70 font-body mt-1">guests</p>
+                    <p className="mt-3 text-lg font-display font-semibold text-gold">
+                      {tier.priceLabel}
+                    </p>
+                  </div>
+
+                  <div
+                    className="mt-5 flex gap-3 overflow-x-auto snap-x snap-mandatory px-[38%] -mx-5 scrollbar-none"
+                    style={{ scrollbarWidth: "none" }}
+                  >
+                    {GUEST_TIERS.map((t) => {
+                      const active = t.guests === draft.guests;
+                      return (
+                        <button
+                          key={t.guests}
+                          type="button"
+                          onClick={() => setDraft((d) => ({ ...d, guests: t.guests }))}
+                          className={`snap-center shrink-0 w-20 h-20 rounded-full flex flex-col items-center justify-center font-body transition-all ${
+                            active
+                              ? "gold-gradient text-primary-foreground scale-110 shadow-lg"
+                              : "bg-primary-foreground/10 text-primary-foreground/70 border border-primary-foreground/20"
+                          }`}
+                        >
+                          <span className="text-base font-display font-bold">
+                            {t.price === null ? "200+" : t.guests}
+                          </span>
+                          <span className="text-[10px] opacity-80">
+                            {t.price === null ? "custom" : t.price === 0 ? "free" : `${t.price} Br`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {isCustom && (
+                    <a
+                      href={`tel:${SALES_PHONE}`}
+                      className="mt-5 flex items-center justify-center gap-2 h-12 rounded-xl gold-gradient text-primary-foreground font-body font-medium"
+                    >
+                      <Phone className="w-4 h-4" /> Contact us for a custom price
+                    </a>
+                  )}
+                </div>
+              )}
+
               {current.key === "review" && (
                 <div className="rounded-2xl overflow-hidden bg-card/95 backdrop-blur">
                   {draft.coverPreview && (
@@ -256,6 +338,9 @@ const CreateEvent = () => {
                     </p>
                     <p className="text-muted-foreground">{draft.date}</p>
                     <p className="text-muted-foreground">{draft.venue}</p>
+                    <p className="text-foreground font-medium">
+                      {tier.label} · {tier.priceLabel}
+                    </p>
                     {draft.welcomeMessage && (
                       <p className="text-muted-foreground whitespace-pre-wrap pt-2 border-t border-border">
                         {draft.welcomeMessage}
@@ -278,7 +363,13 @@ const CreateEvent = () => {
             disabled={saving}
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            {saving ? "Creating..." : "Create Event"}
+            {saving
+              ? "Creating..."
+              : isCustom
+                ? "Contact us for pricing"
+                : tier.price && tier.price > 0
+                  ? `Pay ${tier.priceLabel} & Create Event`
+                  : "Create Event"}
           </Button>
         ) : (
           <Button
@@ -293,6 +384,66 @@ const CreateEvent = () => {
           </Button>
         )}
       </div>
+
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent className="max-w-[340px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              Pay {tier.priceLabel}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex gap-2 -mt-1">
+            {PAYMENT_METHODS.map((m, i) => (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setPayPage(i)}
+                className={`flex-1 h-9 rounded-lg text-xs font-body transition-colors ${
+                  payPage === i
+                    ? "gold-gradient text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {m.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-border p-4 space-y-2 font-body text-sm">
+            {PAYMENT_METHODS[payPage].fields.map((f) => (
+              <div key={f.label} className="flex justify-between gap-3">
+                <span className="text-muted-foreground">{f.label}</span>
+                <span className="font-medium text-foreground text-right">{f.value}</span>
+              </div>
+            ))}
+            <div className="flex justify-between gap-3 pt-2 border-t border-border">
+              <span className="text-muted-foreground">Amount</span>
+              <span className="font-semibold text-gold">{tier.priceLabel}</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground font-body">
+            Transfer the amount, then create your event. We confirm the payment before your
+            event goes fully live.
+          </p>
+
+          <Button
+            variant="gold"
+            className="w-full h-11 rounded-xl"
+            onClick={handleCreate}
+            disabled={saving}
+          >
+            {saving ? "Creating..." : "I've paid — Create Event"}
+          </Button>
+          <a
+            href={`tel:${SALES_PHONE}`}
+            className="text-center text-xs text-muted-foreground font-body underline-offset-4 underline"
+          >
+            Need help? Call {SALES_PHONE}
+          </a>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
