@@ -96,9 +96,13 @@ export type Database = {
           name: string
           owner_id: string | null
           password: string
+          payer_phone: string | null
+          payment_method: string | null
           payment_status: string
+          payment_submitted_at: string | null
           plan_price: number
           qr_enabled: boolean
+          transaction_ref: string | null
           uploads: number | null
           venue: string | null
           welcome_background_image: string | null
@@ -116,9 +120,13 @@ export type Database = {
           name: string
           owner_id?: string | null
           password?: string
+          payer_phone?: string | null
+          payment_method?: string | null
           payment_status?: string
+          payment_submitted_at?: string | null
           plan_price?: number
           qr_enabled?: boolean
+          transaction_ref?: string | null
           uploads?: number | null
           venue?: string | null
           welcome_background_image?: string | null
@@ -136,9 +144,13 @@ export type Database = {
           name?: string
           owner_id?: string | null
           password?: string
+          payer_phone?: string | null
+          payment_method?: string | null
           payment_status?: string
+          payment_submitted_at?: string | null
           plan_price?: number
           qr_enabled?: boolean
+          transaction_ref?: string | null
           uploads?: number | null
           venue?: string | null
           welcome_background_image?: string | null
