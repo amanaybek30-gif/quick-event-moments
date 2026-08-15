@@ -12,6 +12,9 @@ export interface EventData {
   qr_enabled?: boolean;
   uploads: number;
   contributors: number;
+  guest_limit?: number;
+  plan_price?: number;
+  payment_status?: string;
   created_at?: string;
   owner_id?: string | null;
 }
@@ -29,6 +32,9 @@ const mapRow = (row: any): EventData => ({
   qr_enabled: row.qr_enabled ?? true,
   uploads: row.uploads || 0,
   contributors: row.contributors || 0,
+  guest_limit: row.guest_limit ?? 10,
+  plan_price: row.plan_price ?? 0,
+  payment_status: row.payment_status ?? "free",
   created_at: row.created_at,
   owner_id: row.owner_id ?? null,
 });
@@ -428,6 +434,7 @@ export interface NewEventInput {
   cover_image: string;
   welcome_title: string;
   welcome_message: string;
+  guest_limit: number;
 }
 
 /** Create an event owned by the signed-in user (no admin, no password). */
