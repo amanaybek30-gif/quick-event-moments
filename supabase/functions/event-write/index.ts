@@ -171,6 +171,17 @@ Deno.serve(async (req) => {
       if (updates === null) return json({ error: "Invalid event fields" }, 400);
       const plan = resolvePlan(ev.guest_limit);
       if (!plan) return json({ error: "Invalid guest tier" }, 400);
+
+      // Paid tiers require proof of payment before the event is created.
+      const paid = plan.plan_price > 0;
+      const payerPhone = str(body.payer_phone, 40);
+      const transactionRef = str(body.transaction_ref, 120);
+      const paymentMethod = str(body.payment_method, 60);
+      if (paid && (!payerPhone || payerPhone.length < 7 || !transactionRef ||
+        transactionRef.trim().length < 4)) {
+        return json({ error: "Phone number and transaction ID are required" }, 400);
+      }
+
       const { error } = await admin.from("events").insert({
         ...updates,
         ...plan,
@@ -181,9 +192,20 @@ Deno.serve(async (req) => {
         owner_id: userId,
         uploads: 0,
         contributors: 0,
+        // Paid events stay locked until the payment is confirmed by the team.
+        qr_enabled: paid ? false : (updates.qr_enabled ?? true),
+        payer_phone: paid ? payerPhone : null,
+        transaction_ref: paid ? transactionRef : null,
+        payment_method: paid ? paymentMethod : null,
+        payment_submitted_at: paid ? new Date().toISOString() : null,
       });
       if (error) return json({ error: "Could not create event" }, 400);
-      return json({ ok: true });
+      return json({ ok: true, pending: paid });
+    }
+
+    // Admin password gate (used by the hidden admin dashboard)
+    if (action === "verify_admin") {
+      return json({ valid: isAdmin(body.password ?? adminPassword) });
     }
 
     const admin_ok = isAdmin(adminPassword);
