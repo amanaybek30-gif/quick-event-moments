@@ -1,7 +1,15 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check, ImagePlus, Loader2, Phone, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ImagePlus,
+  Loader2,
+  MessageSquare,
+  Users,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +28,7 @@ import stepVenue from "@/assets/step-venue.jpg";
 import stepCover from "@/assets/step-cover.jpg";
 import stepWelcome from "@/assets/hero-event.jpg";
 import stepReview from "@/assets/contact-bg.jpg";
+import { useI18n, type TranslationKey } from "@/i18n";
 
 const slugify = (v: string) =>
   v.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40) || "event";
@@ -36,14 +45,19 @@ interface Draft {
 }
 
 const STEPS = [
-  { key: "name", bg: stepName, title: "What's your event called?", hint: "This is the name your guests will see." },
-  { key: "date", bg: stepDate, title: "When is it happening?", hint: "Pick the date of your event." },
-  { key: "venue", bg: stepVenue, title: "Where is it taking place?", hint: "Add the venue or location." },
-  { key: "cover", bg: stepCover, title: "Add a cover photo", hint: "A beautiful image for your event page." },
-  { key: "welcome", bg: stepWelcome, title: "Welcome your guests", hint: "Shown full screen when guests arrive." },
-  { key: "guests", bg: stepVenue, title: "How many guests?", hint: "Swipe the dial to set your guest capacity." },
-  { key: "review", bg: stepReview, title: "Ready to go live?", hint: "Review your event, then create it." },
-] as const;
+  { key: "name", bg: stepName, title: "qName", hint: "qNameHint" },
+  { key: "date", bg: stepDate, title: "qDate", hint: "qDateHint" },
+  { key: "venue", bg: stepVenue, title: "qVenue", hint: "qVenueHint" },
+  { key: "cover", bg: stepCover, title: "qCover", hint: "qCoverHint" },
+  { key: "welcome", bg: stepWelcome, title: "qWelcome", hint: "qWelcomeHint" },
+  { key: "guests", bg: stepVenue, title: "qGuests", hint: "qGuestsHint" },
+  { key: "review", bg: stepReview, title: "qReview", hint: "qReviewHint" },
+] as const satisfies readonly {
+  key: string;
+  bg: string;
+  title: TranslationKey;
+  hint: TranslationKey;
+}[];
 
 const CreateEvent = () => {
   const navigate = useNavigate();
@@ -63,6 +77,12 @@ const CreateEvent = () => {
   });
   const [payOpen, setPayOpen] = useState(false);
   const [payPage, setPayPage] = useState(0);
+  const [payPhone, setPayPhone] = useState("");
+  const [payRef, setPayRef] = useState("");
+  const { t } = useI18n();
+
+  const priceLabel = (price: number | null) =>
+    price === null ? t("custom") : price === 0 ? t("free") : `${price.toLocaleString()} Birr`;
 
   const tier = tierFor(draft.guests);
   const isCustom = tier.price === null;
@@ -95,12 +115,17 @@ const CreateEvent = () => {
 
   const handleCreate = async () => {
     if (isCustom) {
-      window.location.href = `tel:${SALES_PHONE}`;
+      window.location.href = `sms:${SALES_PHONE}`;
       return;
     }
-    if (tier.price && tier.price > 0 && !payOpen) {
+    const paid = !!tier.price && tier.price > 0;
+    if (paid && !payOpen) {
       setPayPage(0);
       setPayOpen(true);
+      return;
+    }
+    if (paid && (payPhone.trim().length < 7 || payRef.trim().length < 4)) {
+      toast.error(t("paymentFieldsRequired"));
       return;
     }
     setSaving(true);
@@ -110,26 +135,31 @@ const CreateEvent = () => {
       if (draft.coverFile) {
         coverUrl = (await uploadCoverImage(id, draft.coverFile)) || "";
       }
-      const ok = await createOwnedEvent({
-        id,
-        name: draft.name.trim(),
-        date: draft.date,
-        venue: draft.venue.trim(),
-        cover_image: coverUrl,
-        welcome_title: draft.welcomeTitle.trim() || "Welcome!",
-        welcome_message: draft.welcomeMessage.trim(),
-        guest_limit: draft.guests,
-      });
+      const ok = await createOwnedEvent(
+        {
+          id,
+          name: draft.name.trim(),
+          date: draft.date,
+          venue: draft.venue.trim(),
+          cover_image: coverUrl,
+          welcome_title: draft.welcomeTitle.trim() || "Welcome!",
+          welcome_message: draft.welcomeMessage.trim(),
+          guest_limit: draft.guests,
+        },
+        paid
+          ? {
+              payer_phone: payPhone.trim(),
+              transaction_ref: payRef.trim(),
+              payment_method: PAYMENT_METHODS[payPage].name,
+            }
+          : undefined
+      );
       if (!ok) throw new Error("create failed");
       setPayOpen(false);
-      toast.success(
-        tier.price && tier.price > 0
-          ? "Event created — we'll confirm your payment shortly."
-          : "Your event is live!"
-      );
-      navigate(`/organizer/${id}`);
+      toast.success(paid ? t("eventPending") : t("eventLive"));
+      navigate(paid ? "/" : `/organizer/${id}`);
     } catch {
-      toast.error("Could not create the event. Please try again.");
+      toast.error(t("createFailed"));
     } finally {
       setSaving(false);
     }
@@ -188,17 +218,17 @@ const CreateEvent = () => {
               transition={{ duration: 0.35, ease: "easeOut" }}
             >
               <p className="text-[11px] uppercase tracking-[0.2em] text-gold font-body mb-3">
-                Step {step + 1} of {STEPS.length}
+                {t("stepOf", { n: step + 1, total: STEPS.length })}
               </p>
               <h1 className="text-2xl font-display font-bold text-primary-foreground mb-2">
-                {current.title}
+                {t(current.title)}
               </h1>
-              <p className="text-primary-foreground/70 font-body text-sm mb-6">{current.hint}</p>
+              <p className="text-primary-foreground/70 font-body text-sm mb-6">{t(current.hint)}</p>
 
               {current.key === "name" && (
                 <Input
                   autoFocus
-                  placeholder="e.g. Sara & Daniel's Wedding"
+                  placeholder={t("namePlaceholder")}
                   value={draft.name}
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                   className="h-12 rounded-xl bg-background font-body"
@@ -216,7 +246,7 @@ const CreateEvent = () => {
 
               {current.key === "venue" && (
                 <Input
-                  placeholder="e.g. Sheraton Addis, Ballroom"
+                  placeholder={t("venuePlaceholder")}
                   value={draft.venue}
                   onChange={(e) => setDraft({ ...draft, venue: e.target.value })}
                   className="h-12 rounded-xl bg-background font-body"
@@ -245,7 +275,7 @@ const CreateEvent = () => {
                     ) : (
                       <span className="flex flex-col items-center gap-2 text-primary-foreground/70 font-body text-sm">
                         <ImagePlus className="w-7 h-7" />
-                        Choose a photo
+                        {t("choosePhoto")}
                       </span>
                     )}
                   </button>
@@ -255,13 +285,13 @@ const CreateEvent = () => {
               {current.key === "welcome" && (
                 <div className="space-y-3">
                   <Input
-                    placeholder="Welcome title"
+                    placeholder={t("welcomeTitle")}
                     value={draft.welcomeTitle}
                     onChange={(e) => setDraft({ ...draft, welcomeTitle: e.target.value })}
                     className="h-12 rounded-xl bg-background font-body"
                   />
                   <Textarea
-                    placeholder={"Write a short welcome message\nfor your guests..."}
+                    placeholder={t("welcomeMessagePlaceholder")}
                     value={draft.welcomeMessage}
                     onChange={(e) => setDraft({ ...draft, welcomeMessage: e.target.value })}
                     rows={5}
@@ -277,9 +307,9 @@ const CreateEvent = () => {
                     <p className="text-4xl font-display font-bold text-primary-foreground leading-none">
                       {isCustom ? "200+" : draft.guests}
                     </p>
-                    <p className="text-xs text-primary-foreground/70 font-body mt-1">guests</p>
+                    <p className="text-xs text-primary-foreground/70 font-body mt-1">{t("guests")}</p>
                     <p className="mt-3 text-lg font-display font-semibold text-gold">
-                      {tier.priceLabel}
+                      {priceLabel(tier.price)}
                     </p>
                   </div>
 
@@ -287,13 +317,13 @@ const CreateEvent = () => {
                     className="mt-5 flex gap-3 overflow-x-auto snap-x snap-mandatory px-[38%] -mx-5 scrollbar-none"
                     style={{ scrollbarWidth: "none" }}
                   >
-                    {GUEST_TIERS.map((t) => {
-                      const active = t.guests === draft.guests;
+                    {GUEST_TIERS.map((tt) => {
+                      const active = tt.guests === draft.guests;
                       return (
                         <button
-                          key={t.guests}
+                          key={tt.guests}
                           type="button"
-                          onClick={() => setDraft((d) => ({ ...d, guests: t.guests }))}
+                          onClick={() => setDraft((d) => ({ ...d, guests: tt.guests }))}
                           className={`snap-center shrink-0 w-20 h-20 rounded-full flex flex-col items-center justify-center font-body transition-all ${
                             active
                               ? "gold-gradient text-primary-foreground scale-110 shadow-lg"
@@ -301,10 +331,14 @@ const CreateEvent = () => {
                           }`}
                         >
                           <span className="text-base font-display font-bold">
-                            {t.price === null ? "200+" : t.guests}
+                            {tt.price === null ? "200+" : tt.guests}
                           </span>
                           <span className="text-[10px] opacity-80">
-                            {t.price === null ? "custom" : t.price === 0 ? "free" : `${t.price} Br`}
+                            {tt.price === null
+                              ? t("custom")
+                              : tt.price === 0
+                                ? t("free")
+                                : `${tt.price} Br`}
                           </span>
                         </button>
                       );
@@ -313,10 +347,10 @@ const CreateEvent = () => {
 
                   {isCustom && (
                     <a
-                      href={`tel:${SALES_PHONE}`}
+                      href={`sms:${SALES_PHONE}`}
                       className="mt-5 flex items-center justify-center gap-2 h-12 rounded-xl gold-gradient text-primary-foreground font-body font-medium"
                     >
-                      <Phone className="w-4 h-4" /> Contact us for a custom price
+                      <MessageSquare className="w-4 h-4" /> {t("contactForCustom")}
                     </a>
                   )}
                 </div>
@@ -334,12 +368,12 @@ const CreateEvent = () => {
                   )}
                   <div className="p-4 space-y-2 font-body text-sm">
                     <p className="font-display font-semibold text-lg text-foreground">
-                      {draft.name || "Untitled event"}
+                      {draft.name || t("untitledEvent")}
                     </p>
                     <p className="text-muted-foreground">{draft.date}</p>
                     <p className="text-muted-foreground">{draft.venue}</p>
                     <p className="text-foreground font-medium">
-                      {tier.label} · {tier.priceLabel}
+                      {isCustom ? "200+" : tier.guests} {t("guests")} · {priceLabel(tier.price)}
                     </p>
                     {draft.welcomeMessage && (
                       <p className="text-muted-foreground whitespace-pre-wrap pt-2 border-t border-border">
