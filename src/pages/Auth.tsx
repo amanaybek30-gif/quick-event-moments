@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import QrScannerFab from "@/components/QrScannerFab";
 import heroImage from "@/assets/hero-event.jpg";
+import { useI18n } from "@/i18n";
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 48 48" className="w-4 h-4" aria-hidden="true">
@@ -23,12 +24,13 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const { t } = useI18n();
 
   const handleGoogle = async () => {
     const { error } = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
-    if (error) toast.error("Google sign-in failed. Please try again.");
+    if (error) toast.error(t("somethingWrong"));
   };
 
   const handleEmail = async (e: React.FormEvent) => {
@@ -42,13 +44,13 @@ const Auth = () => {
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        toast.success("Welcome to Momentique!");
+        toast.success(t("welcomeToApp"));
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong");
+      toast.error(err instanceof Error ? err.message : t("somethingWrong"));
     } finally {
       setLoading(false);
     }
@@ -71,7 +73,7 @@ const Auth = () => {
           <h2 className="text-lg font-display font-bold text-primary-foreground">
             Moment<span className="text-gold">ique</span>
           </h2>
-          <QrScannerFab variant="inline" label="Scan QR" />
+          <QrScannerFab variant="inline" label={t("scanQr")} />
         </div>
 
         <motion.div
@@ -81,10 +83,10 @@ const Auth = () => {
           className="flex-1 flex flex-col justify-center"
         >
           <h1 className="text-3xl font-display font-bold text-primary-foreground leading-tight mb-2">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
+            {mode === "signin" ? t("welcomeBack") : t("createAccount")}
           </h1>
           <p className="text-primary-foreground/70 font-body text-sm mb-7">
-            Set up your own event and collect every photo and video from your guests.
+            {t("authSubtitle")}
           </p>
 
           <Button
@@ -94,13 +96,13 @@ const Auth = () => {
             onClick={handleGoogle}
           >
             <GoogleIcon />
-            Continue with Google
+            {t("continueGoogle")}
           </Button>
 
           <div className="flex items-center gap-3 my-5">
             <div className="h-px flex-1 bg-primary-foreground/20" />
             <span className="text-[11px] uppercase tracking-widest text-primary-foreground/50 font-body">
-              or
+              {t("or")}
             </span>
             <div className="h-px flex-1 bg-primary-foreground/20" />
           </div>
@@ -112,7 +114,7 @@ const Auth = () => {
                 type="email"
                 inputMode="email"
                 autoComplete="email"
-                placeholder="Email address"
+                placeholder={t("emailAddress")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10 h-12 rounded-xl font-body bg-background"
@@ -124,7 +126,7 @@ const Auth = () => {
               <Input
                 type="password"
                 autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                placeholder="Password"
+                placeholder={t("password")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-10 h-12 rounded-xl font-body bg-background"
@@ -139,7 +141,7 @@ const Auth = () => {
               className="w-full h-12 rounded-xl gap-2"
               disabled={loading}
             >
-              {loading ? "Please wait..." : mode === "signin" ? "Sign In" : "Sign Up"}
+              {loading ? t("pleaseWait") : mode === "signin" ? t("signIn") : t("signUp")}
               <ArrowRight className="w-4 h-4" />
             </Button>
           </form>
@@ -149,14 +151,12 @@ const Auth = () => {
             onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
             className="mt-5 text-sm text-primary-foreground/70 font-body underline-offset-4 hover:underline"
           >
-            {mode === "signin"
-              ? "New here? Create an account"
-              : "Already have an account? Sign in"}
+            {mode === "signin" ? t("newHere") : t("haveAccount")}
           </button>
         </motion.div>
 
         <p className="text-center text-[11px] text-primary-foreground/50 font-body">
-          Powered by <span className="font-semibold">VION Events</span>
+          {t("poweredBy")} <span className="font-semibold">VION Events</span>
         </p>
       </div>
     </div>
