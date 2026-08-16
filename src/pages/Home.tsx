@@ -333,7 +333,36 @@ const Home = () => {
             onClick={handleClaim}
             disabled={claimBusy || !claimPw}
           >
-            {claimBusy ? "Checking..." : "Add to My Events"}
+            {claimBusy ? t("pleaseWait") : t("eventAdded")}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hidden admin gate (3 taps on the logo) */}
+      <Dialog open={adminOpen} onOpenChange={(o) => !o && setAdminOpen(false)}>
+        <DialogContent className="max-w-[320px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">{t("adminAccess")}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground font-body -mt-2">
+            {t("adminPasswordPrompt")}
+          </p>
+          <Input
+            type="password"
+            autoFocus
+            placeholder={t("password")}
+            value={adminPw}
+            onChange={(e) => setAdminPw(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && adminPw && submitAdmin()}
+            className="h-11 rounded-xl font-body"
+          />
+          <Button
+            variant="gold"
+            className="w-full h-11 rounded-xl"
+            onClick={submitAdmin}
+            disabled={adminBusy || !adminPw}
+          >
+            {adminBusy ? t("pleaseWait") : t("unlock")}
           </Button>
         </DialogContent>
       </Dialog>
