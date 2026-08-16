@@ -15,6 +15,10 @@ export interface EventData {
   guest_limit?: number;
   plan_price?: number;
   payment_status?: string;
+  payer_phone?: string | null;
+  transaction_ref?: string | null;
+  payment_method?: string | null;
+  payment_submitted_at?: string | null;
   created_at?: string;
   owner_id?: string | null;
 }
@@ -35,6 +39,10 @@ const mapRow = (row: any): EventData => ({
   guest_limit: row.guest_limit ?? 10,
   plan_price: row.plan_price ?? 0,
   payment_status: row.payment_status ?? "free",
+  payer_phone: row.payer_phone ?? null,
+  transaction_ref: row.transaction_ref ?? null,
+  payment_method: row.payment_method ?? null,
+  payment_submitted_at: row.payment_submitted_at ?? null,
   created_at: row.created_at,
   owner_id: row.owner_id ?? null,
 });
@@ -116,7 +124,7 @@ export const changeEventPassword = async (
 export const fetchAllEvents = async (): Promise<EventData[]> => {
   const { data, error } = await supabase
     .from("events")
-    .select("id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,guest_limit,plan_price,payment_status,created_at,owner_id")
+    .select("id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,guest_limit,plan_price,payment_status,payer_phone,transaction_ref,payment_method,payment_submitted_at,created_at,owner_id")
     .order("created_at", { ascending: false });
   if (error) {
     console.error("Error fetching events:", error);
@@ -128,7 +136,7 @@ export const fetchAllEvents = async (): Promise<EventData[]> => {
 export const fetchEventById = async (eventId: string): Promise<EventData | null> => {
   const { data, error } = await supabase
     .from("events")
-    .select("id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,guest_limit,plan_price,payment_status,created_at,owner_id")
+    .select("id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,guest_limit,plan_price,payment_status,payer_phone,transaction_ref,payment_method,payment_submitted_at,created_at,owner_id")
     .eq("id", eventId)
     .maybeSingle();
   if (error || !data) return null;
@@ -389,7 +397,7 @@ export const deleteShowcaseMedia = async (eventId: string, mediaId: string): Pro
 // ── Self-service ownership ──
 
 const EVENT_SELECT =
-  "id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,guest_limit,plan_price,payment_status,created_at,owner_id";
+  "id,name,date,venue,cover_image,welcome_message,welcome_title,welcome_background_image,qr_enabled,uploads,contributors,guest_limit,plan_price,payment_status,payer_phone,transaction_ref,payment_method,payment_submitted_at,created_at,owner_id";
 
 /** Events created (or claimed) by the signed-in user. */
 export const fetchMyEvents = async (userId: string): Promise<EventData[]> => {
@@ -437,9 +445,18 @@ export interface NewEventInput {
   guest_limit: number;
 }
 
+export interface PaymentInput {
+  payer_phone: string;
+  transaction_ref: string;
+  payment_method: string;
+}
+
 /** Create an event owned by the signed-in user (no admin, no password). */
-export const createOwnedEvent = async (event: NewEventInput): Promise<boolean> => {
-  const { ok } = await callEventWrite("create_event_self", { event });
+export const createOwnedEvent = async (
+  event: NewEventInput,
+  payment?: PaymentInput
+): Promise<boolean> => {
+  const { ok } = await callEventWrite("create_event_self", { event, ...(payment || {}) });
   if (ok) markOwnerAccess(event.id);
   return ok;
 };
@@ -447,5 +464,25 @@ export const createOwnedEvent = async (event: NewEventInput): Promise<boolean> =
 /** Delete an event the signed-in user owns. */
 export const deleteOwnedEvent = async (eventId: string): Promise<boolean> => {
   const { ok } = await callEventWrite("delete_event", { eventId });
+  return ok;
+};
+
+/** Verify the admin password server-side (hidden admin gate). */
+export const verifyAdminPassword = async (password: string): Promise<boolean> => {
+  const { data, error } = await supabase.functions.invoke("event-write", {
+    body: { action: "verify_admin", password },
+  });
+  if (error) return false;
+  const valid = (data as { valid?: boolean })?.valid === true;
+  if (valid) storeAdminPassword(password);
+  return valid;
+};
+
+/** Admin-only: confirm or decline a submitted payment. */
+export const setPaymentStatus = async (
+  eventId: string,
+  status: "confirmed" | "declined"
+): Promise<boolean> => {
+  const { ok } = await callEventWrite("set_payment_status", { eventId, status });
   return ok;
 };
