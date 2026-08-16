@@ -117,8 +117,6 @@ const en = {
   transactionPlaceholder: "e.g. BFA12345678",
   paymentFieldsRequired: "Enter your phone number and transaction ID to continue.",
   iHavePaid: "I've paid",
-  paymentFieldsRequired:
-    "Enter your phone number and transaction ID to continue.",
   needHelp: "Need help? Call",
 
   // settings
@@ -422,8 +420,6 @@ const fr: Dict = {
   transactionPlaceholder: "ex. BFA12345678",
   paymentFieldsRequired: "Saisissez votre numéro et l'identifiant de transaction pour continuer.",
   iHavePaid: "J'ai payé",
-  paymentFieldsRequired:
-    "Saisissez votre numéro de téléphone et l'ID de transaction pour continuer.",
   needHelp: "Besoin d'aide ? Appelez",
 
   settings: "Réglages",
@@ -574,8 +570,6 @@ const es: Dict = {
   transactionPlaceholder: "ej. BFA12345678",
   paymentFieldsRequired: "Introduce tu número y el ID de la transacción para continuar.",
   iHavePaid: "Ya he pagado",
-  paymentFieldsRequired:
-    "Introduce tu número de teléfono y el ID de transacción para continuar.",
   needHelp: "¿Necesitas ayuda? Llama al",
 
   settings: "Ajustes",
