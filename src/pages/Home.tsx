@@ -333,7 +333,7 @@ const Home = () => {
             onClick={handleClaim}
             disabled={claimBusy || !claimPw}
           >
-            {claimBusy ? t("pleaseWait") : t("eventAdded")}
+            {claimBusy ? t("pleaseWait") : t("addToMyEvents")}
           </Button>
         </DialogContent>
       </Dialog>
