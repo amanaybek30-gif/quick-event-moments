@@ -16,6 +16,8 @@ import {
   X,
   Video,
   Pencil,
+  Check,
+  Ban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +45,7 @@ import {
   uploadWelcomeBackgroundImage,
   uploadShowcaseMedia,
   updateEventDetails,
+  setPaymentStatus,
   type EventData,
 } from "@/lib/eventService";
 
@@ -80,7 +83,7 @@ const AdminDashboard = () => {
     const role = localStorage.getItem("mv_role");
     if (role !== "admin" || !sessionStorage.getItem("mv_admin_pw")) {
       localStorage.removeItem("mv_role");
-      navigate("/admin/login");
+      navigate("/");
       return;
     }
     loadEvents();
@@ -94,6 +97,26 @@ const AdminDashboard = () => {
   };
 
   const totalUploads = events.reduce((sum, e) => sum + e.uploads, 0);
+  const pendingPayments = events.filter((e) => e.payment_status === "pending");
+  const [payBusy, setPayBusy] = useState<string | null>(null);
+
+  const reviewPayment = async (eventId: string, status: "confirmed" | "declined") => {
+    setPayBusy(eventId);
+    const ok = await setPaymentStatus(eventId, status);
+    setPayBusy(null);
+    if (!ok) {
+      toast({ title: "Could not update payment", variant: "destructive" });
+      return;
+    }
+    setEvents((prev) =>
+      prev.map((e) =>
+        e.id === eventId
+          ? ({ ...e, payment_status: status, qr_enabled: status === "confirmed" } as EventData)
+          : e
+      )
+    );
+    toast({ title: status === "confirmed" ? "Payment confirmed" : "Payment declined" });
+  };
 
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -454,7 +477,47 @@ const AdminDashboard = () => {
           </motion.div>
         </div>
 
-        <h2 className="text-lg font-display font-semibold text-foreground mb-4">Your Events</h2>
+        {pendingPayments.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-lg font-display font-semibold text-foreground mb-4">
+              Pending payments ({pendingPayments.length})
+            </h2>
+            <div className="space-y-3">
+              {pendingPayments.map((ev) => (
+                <div key={ev.id} className="bg-card rounded-xl border border-border p-4">
+                  <p className="font-display font-semibold text-foreground">{ev.name}</p>
+                  <div className="mt-2 grid gap-1 text-sm font-body text-muted-foreground">
+                    <p>Guests: {ev.guest_limit ?? "-"}</p>
+                    <p>Amount: {(ev.plan_price ?? 0).toLocaleString()} Birr</p>
+                    <p>Method: {ev.payment_method || "-"}</p>
+                    <p>Phone: {ev.payer_phone || "-"}</p>
+                    <p>Transaction: {ev.transaction_ref || "-"}</p>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button
+                      variant="gold"
+                      className="h-10 rounded-xl gap-2"
+                      disabled={payBusy === ev.id}
+                      onClick={() => reviewPayment(ev.id, "confirmed")}
+                    >
+                      <Check className="w-4 h-4" /> Confirm
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-10 rounded-xl gap-2 text-destructive"
+                      disabled={payBusy === ev.id}
+                      onClick={() => reviewPayment(ev.id, "declined")}
+                    >
+                      <Ban className="w-4 h-4" /> Decline
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <h2 className="text-lg font-display font-semibold text-foreground mb-4">All Events</h2>
         {loading ? (
           <p className="text-muted-foreground font-body text-center py-8">Loading events...</p>
         ) : (

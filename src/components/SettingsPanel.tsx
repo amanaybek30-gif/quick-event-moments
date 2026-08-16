@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -18,28 +17,14 @@ import {
   LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
+import { LANGUAGES, useI18n, type Lang, type TranslationKey } from "@/i18n";
 
-const FAQ = [
-  {
-    q: "How do guests upload photos?",
-    a: "Share your event QR code or link. Guests scan it, open the event page and upload photos or videos straight from their phone — no app or account needed.",
-  },
-  {
-    q: "Who can see my event gallery?",
-    a: "Anyone with your event link or QR code can view and add media. Only you, the event owner, can edit the event or delete media.",
-  },
-  {
-    q: "Can I download everything at once?",
-    a: "Yes. Long-press any photo or video in the gallery to enter selection mode, tap select all, then save or share them together.",
-  },
-  {
-    q: "Is there a limit on uploads?",
-    a: "There's no upload count limit. Videos can be recorded up to 30 minutes each.",
-  },
-  {
-    q: "How do I install the app?",
-    a: "Open Momentique in your phone browser and choose 'Add to Home Screen'. It then runs full screen like a native app.",
-  },
+const FAQ_KEYS: [TranslationKey, TranslationKey][] = [
+  ["faq1q", "faq1a"],
+  ["faq2q", "faq2a"],
+  ["faq3q", "faq3a"],
+  ["faq4q", "faq4a"],
+  ["faq5q", "faq5a"],
 ];
 
 const SOCIALS = [
@@ -49,28 +34,24 @@ const SOCIALS = [
   { label: "Website", Icon: Globe, url: "https://vionevents.com" },
 ];
 
-const LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "am", label: "አማርኛ" },
-];
-
 interface SettingsPanelProps {
   email?: string | null;
   onSignOut: () => void;
 }
 
 const SettingsPanel = ({ email, onSignOut }: SettingsPanelProps) => {
-  const [lang, setLang] = useState(() => localStorage.getItem("mv_lang") || "en");
+  const { lang, setLang, t } = useI18n();
 
-  const pickLang = (code: string) => {
+  const pickLang = (code: Lang) => {
     setLang(code);
-    localStorage.setItem("mv_lang", code);
-    toast.success(code === "en" ? "Language set to English" : "ቋንቋ ወደ አማርኛ ተቀይሯል");
+    toast.success(LANGUAGES.find((l) => l.code === code)?.label ?? "");
   };
 
   const clearCache = async () => {
     try {
-      const keep = Object.keys(localStorage).filter((k) => k.startsWith("sb-"));
+      const keep = Object.keys(localStorage).filter(
+        (k) => k.startsWith("sb-") || k === "mv_lang",
+      );
       const saved = keep.map((k) => [k, localStorage.getItem(k)] as const);
       localStorage.clear();
       saved.forEach(([k, v]) => v && localStorage.setItem(k, v));
@@ -79,20 +60,20 @@ const SettingsPanel = ({ email, onSignOut }: SettingsPanelProps) => {
         const names = await caches.keys();
         await Promise.all(names.map((n) => caches.delete(n)));
       }
-      toast.success("Cache cleared");
+      toast.success(t("cacheCleared"));
     } catch {
-      toast.error("Could not clear the cache");
+      toast.error(t("cacheClearFailed"));
     }
   };
 
   return (
     <section className="space-y-5">
-      <h2 className="text-xl font-display font-bold text-foreground">Settings</h2>
+      <h2 className="text-xl font-display font-bold text-foreground">{t("settings")}</h2>
 
       {email && (
         <div className="p-3.5 rounded-2xl bg-card border border-border">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-body">
-            Signed in as
+            {t("signedInAs")}
           </p>
           <p className="font-body text-sm text-foreground truncate">{email}</p>
         </div>
@@ -102,16 +83,16 @@ const SettingsPanel = ({ email, onSignOut }: SettingsPanelProps) => {
       <div className="rounded-2xl bg-card border border-border px-4">
         <Accordion type="single" collapsible>
           <AccordionItem value="faq" className="border-none">
-            <AccordionTrigger className="font-display text-sm">FAQ</AccordionTrigger>
+            <AccordionTrigger className="font-display text-sm">{t("faq")}</AccordionTrigger>
             <AccordionContent>
               <Accordion type="single" collapsible className="space-y-1">
-                {FAQ.map((f, i) => (
+                {FAQ_KEYS.map(([q, a], i) => (
                   <AccordionItem key={i} value={`q${i}`} className="border-border">
                     <AccordionTrigger className="text-left text-xs font-body">
-                      {f.q}
+                      {t(q)}
                     </AccordionTrigger>
                     <AccordionContent className="text-xs text-muted-foreground font-body leading-relaxed">
-                      {f.a}
+                      {t(a)}
                     </AccordionContent>
                   </AccordionItem>
                 ))}
@@ -123,40 +104,41 @@ const SettingsPanel = ({ email, onSignOut }: SettingsPanelProps) => {
 
       {/* Contact */}
       <div className="rounded-2xl bg-card border border-border p-4">
-        <p className="font-display font-semibold text-sm text-foreground mb-3">Contact us</p>
+        <p className="font-display font-semibold text-sm text-foreground mb-3">{t("contactUs")}</p>
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="gold"
             className="gap-2 text-xs h-11 rounded-xl"
             onClick={() => (window.location.href = "mailto:eventcoordinator@vionevents.com")}
           >
-            <Mail className="w-4 h-4" /> Email us
+            <Mail className="w-4 h-4" /> {t("emailUs")}
           </Button>
           <Button
             variant="gold-outline"
             className="gap-2 text-xs h-11 rounded-xl"
             onClick={() => (window.location.href = "tel:+251944010908")}
           >
-            <Phone className="w-4 h-4" /> Call us
+            <Phone className="w-4 h-4" /> {t("callUs")}
           </Button>
         </div>
       </div>
 
       {/* Language */}
       <div className="rounded-2xl bg-card border border-border p-4">
-        <p className="font-display font-semibold text-sm text-foreground mb-3">Language</p>
-        <div className="flex gap-2">
+        <p className="font-display font-semibold text-sm text-foreground mb-3">{t("language")}</p>
+        <div className="grid grid-cols-4 gap-2">
           {LANGUAGES.map((l) => (
             <button
               key={l.code}
               onClick={() => pickLang(l.code)}
-              className={`px-4 h-10 rounded-xl text-xs font-body border transition-colors ${
+              aria-label={l.label}
+              className={`h-11 rounded-xl text-sm font-body border transition-colors ${
                 lang === l.code
                   ? "gold-gradient text-primary-foreground border-transparent"
                   : "bg-background text-foreground border-border"
               }`}
             >
-              {l.label}
+              {l.initials}
             </button>
           ))}
         </div>
@@ -168,21 +150,13 @@ const SettingsPanel = ({ email, onSignOut }: SettingsPanelProps) => {
           <AccordionItem value="privacy" className="border-none">
             <AccordionTrigger className="font-display text-sm">
               <span className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-gold" /> Privacy
+                <Shield className="w-4 h-4 text-gold" /> {t("privacy")}
               </span>
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground font-body leading-relaxed space-y-2">
-              <p>
-                Momentique stores only what your event needs: event details and the photos and
-                videos uploaded to it. Media is kept in secure cloud storage tied to your event.
-              </p>
-              <p>
-                We never sell your data or share it with third parties. Deleting an event removes
-                its gallery. Guests are not required to create an account.
-              </p>
-              <p>
-                Questions about your data? Email eventcoordinator@vionevents.com and we'll respond.
-              </p>
+              <p>{t("privacy1")}</p>
+              <p>{t("privacy2")}</p>
+              <p>{t("privacy3")}</p>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
@@ -190,7 +164,7 @@ const SettingsPanel = ({ email, onSignOut }: SettingsPanelProps) => {
 
       {/* Socials */}
       <div className="rounded-2xl bg-card border border-border p-4">
-        <p className="font-display font-semibold text-sm text-foreground mb-3">Follow us</p>
+        <p className="font-display font-semibold text-sm text-foreground mb-3">{t("followUs")}</p>
         <div className="flex gap-3">
           {SOCIALS.map(({ label, Icon, url }) => (
             <a
@@ -214,19 +188,19 @@ const SettingsPanel = ({ email, onSignOut }: SettingsPanelProps) => {
           className="w-full h-11 rounded-xl gap-2 font-body"
           onClick={clearCache}
         >
-          <Trash2 className="w-4 h-4" /> Clear cache
+          <Trash2 className="w-4 h-4" /> {t("clearCache")}
         </Button>
         <Button
           variant="ghost"
           className="w-full h-11 rounded-xl gap-2 font-body text-destructive"
           onClick={onSignOut}
         >
-          <LogOut className="w-4 h-4" /> Sign out
+          <LogOut className="w-4 h-4" /> {t("signOut")}
         </Button>
       </div>
 
       <p className="text-center text-[11px] text-muted-foreground font-body pt-2">
-        Powered by <span className="font-semibold">VION Events</span>
+        {t("poweredBy")} <span className="font-semibold">VION Events</span>
       </p>
     </section>
   );
