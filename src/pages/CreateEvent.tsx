@@ -398,12 +398,12 @@ const CreateEvent = () => {
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             {saving
-              ? "Creating..."
+              ? t("creating")
               : isCustom
-                ? "Contact us for pricing"
+                ? t("contactForCustom")
                 : tier.price && tier.price > 0
-                  ? `Pay ${tier.priceLabel} & Create Event`
-                  : "Create Event"}
+                  ? `${t("pay")} ${priceLabel(tier.price)}`
+                  : t("createEvent")}
           </Button>
         ) : (
           <Button
@@ -413,7 +413,7 @@ const CreateEvent = () => {
             onClick={() => go(1)}
             disabled={!canContinue()}
           >
-            {current.key === "cover" && !draft.coverFile ? "Skip for now" : "Next"}
+            {current.key === "cover" && !draft.coverFile ? t("skipForNow") : t("next")}
             <ArrowRight className="w-4 h-4" />
           </Button>
         )}
@@ -423,7 +423,7 @@ const CreateEvent = () => {
         <DialogContent className="max-w-[340px] rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">
-              Pay {tier.priceLabel}
+              {t("pay")} {priceLabel(tier.price)}
             </DialogTitle>
           </DialogHeader>
 
@@ -452,15 +452,29 @@ const CreateEvent = () => {
               </div>
             ))}
             <div className="flex justify-between gap-3 pt-2 border-t border-border">
-              <span className="text-muted-foreground">Amount</span>
-              <span className="font-semibold text-gold">{tier.priceLabel}</span>
+              <span className="text-muted-foreground">{t("amount")}</span>
+              <span className="font-semibold text-gold">{priceLabel(tier.price)}</span>
             </div>
           </div>
 
           <p className="text-xs text-muted-foreground font-body">
-            Transfer the amount, then create your event. We confirm the payment before your
-            event goes fully live.
+            {t("paymentInstructions")}
           </p>
+
+          <Input
+            value={payPhone}
+            onChange={(e) => setPayPhone(e.target.value)}
+            type="tel"
+            inputMode="tel"
+            placeholder={t("yourPhone")}
+            className="h-11 rounded-xl font-body"
+          />
+          <Input
+            value={payRef}
+            onChange={(e) => setPayRef(e.target.value)}
+            placeholder={t("transactionRef")}
+            className="h-11 rounded-xl font-body"
+          />
 
           <Button
             variant="gold"
@@ -468,13 +482,13 @@ const CreateEvent = () => {
             onClick={handleCreate}
             disabled={saving}
           >
-            {saving ? "Creating..." : "I've paid — Create Event"}
+            {saving ? t("creating") : t("ivePaid")}
           </Button>
           <a
             href={`tel:${SALES_PHONE}`}
             className="text-center text-xs text-muted-foreground font-body underline-offset-4 underline"
           >
-            Need help? Call {SALES_PHONE}
+            {t("needHelp")} {SALES_PHONE}
           </a>
         </DialogContent>
       </Dialog>
