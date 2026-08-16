@@ -238,6 +238,20 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
+      case "set_payment_status": {
+        if (!admin_ok || !eventId) return json({ error: "Unauthorized" }, 401);
+        const status = str(body.status, 20);
+        if (status !== "confirmed" && status !== "declined") {
+          return json({ error: "Invalid status" }, 400);
+        }
+        const { error } = await admin
+          .from("events")
+          .update({ payment_status: status, qr_enabled: status === "confirmed" })
+          .eq("id", eventId);
+        if (error) return json({ error: "Could not update payment" }, 400);
+        return json({ ok: true });
+      }
+
       case "update_event": {
         if (!eventId || !host_ok) return json({ error: "Unauthorized" }, 401);
         const updates = pickUpdates((body.updates ?? {}) as Record<string, unknown>);
