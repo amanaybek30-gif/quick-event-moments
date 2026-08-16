@@ -458,7 +458,7 @@ const CreateEvent = () => {
           </div>
 
           <p className="text-xs text-muted-foreground font-body">
-            {t("paymentInstructions")}
+            {t("paymentIntro")}
           </p>
 
           <Input
@@ -466,13 +466,13 @@ const CreateEvent = () => {
             onChange={(e) => setPayPhone(e.target.value)}
             type="tel"
             inputMode="tel"
-            placeholder={t("yourPhone")}
+            placeholder={t("phoneNumber")}
             className="h-11 rounded-xl font-body"
           />
           <Input
             value={payRef}
             onChange={(e) => setPayRef(e.target.value)}
-            placeholder={t("transactionRef")}
+            placeholder={t("transactionId")}
             className="h-11 rounded-xl font-body"
           />
 
@@ -482,7 +482,7 @@ const CreateEvent = () => {
             onClick={handleCreate}
             disabled={saving}
           >
-            {saving ? t("creating") : t("ivePaid")}
+            {saving ? t("creating") : t("iHavePaid")}
           </Button>
           <a
             href={`tel:${SALES_PHONE}`}
