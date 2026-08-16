@@ -6,12 +6,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { LanguageProvider } from "@/i18n";
 import SplashIntro from "@/components/SplashIntro";
 import Home from "./pages/Home.tsx";
 import Auth from "./pages/Auth.tsx";
 import CreateEvent from "./pages/CreateEvent.tsx";
 import EventPage from "./pages/EventPage.tsx";
-import AdminLogin from "./pages/AdminLogin.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
 import OrganizerDashboard from "./pages/OrganizerDashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -59,7 +59,6 @@ const AppShell = () => {
           }
         />
         <Route path="/event/:eventId" element={<EventPage />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/organizer/:eventId" element={<OrganizerDashboard />} />
         <Route path="*" element={<NotFound />} />
@@ -73,11 +72,13 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <AppShell />
-        </BrowserRouter>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppShell />
+          </BrowserRouter>
+        </AuthProvider>
+      </LanguageProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

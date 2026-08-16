@@ -80,7 +80,7 @@ const AdminDashboard = () => {
     const role = localStorage.getItem("mv_role");
     if (role !== "admin" || !sessionStorage.getItem("mv_admin_pw")) {
       localStorage.removeItem("mv_role");
-      navigate("/admin/login");
+      navigate("/");
       return;
     }
     loadEvents();
