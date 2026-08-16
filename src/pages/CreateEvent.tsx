@@ -458,7 +458,7 @@ const CreateEvent = () => {
           </div>
 
           <p className="text-xs text-muted-foreground font-body">
-            {t("paymentIntro")}
+            {t("payInstructions")}
           </p>
 
           <Input
