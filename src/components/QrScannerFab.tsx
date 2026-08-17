@@ -160,8 +160,8 @@ const QrScannerFab = ({ variant = "fab", label = "Scan QR" }: QrScannerFabProps)
 
       {/* Scanner overlay */}
       {scanning && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
-          <div className="absolute top-4 right-4 z-10">
+        <div className="fixed inset-0 z-[100] bg-black" style={{ height: "100dvh", width: "100vw" }}>
+          <div className="absolute right-4 z-10" style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
             <Button
               variant="ghost"
               size="icon"
@@ -174,7 +174,7 @@ const QrScannerFab = ({ variant = "fab", label = "Scan QR" }: QrScannerFabProps)
 
           <video
             ref={videoRef}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
             playsInline
             muted
             autoPlay
@@ -186,7 +186,7 @@ const QrScannerFab = ({ variant = "fab", label = "Scan QR" }: QrScannerFabProps)
             <div className="w-56 h-56 md:w-72 md:h-72 border-2 border-white/60 rounded-2xl" />
           </div>
 
-          <div className="absolute bottom-8 left-0 right-0 text-center">
+          <div className="absolute left-0 right-0 text-center" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem)" }}>
             <p className="text-white/80 text-sm font-body">
               Point camera at a Momentique QR code
             </p>
