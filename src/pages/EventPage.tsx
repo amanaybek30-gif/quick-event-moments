@@ -10,6 +10,10 @@ import {
   fetchShowcaseMedia,
   uploadMedia,
   hasEventAccess,
+  joinEvent,
+  QuotaError,
+  type JoinResult,
+
   type EventData,
   type MediaItem,
   type ShowcaseMediaItem,
@@ -203,7 +207,9 @@ const EventPage = () => {
 
   // Welcome intro overlay (shown once when guest lands)
   const [introVisible, setIntroVisible] = useState(true);
+  const [access, setAccess] = useState<JoinResult | null>(null);
   const [introCanDismiss, setIntroCanDismiss] = useState(false);
+
   const [introExiting, setIntroExiting] = useState(false);
 
   // After event loads, start the 3s timer to enable scroll-to-dismiss
@@ -279,6 +285,18 @@ const EventPage = () => {
     return () => { cancelled = true; };
   }, [eventId]);
 
+  // Claim a guest slot: enforces the event's paid guest capacity server-side.
+  useEffect(() => {
+    if (!eventId || !event) return;
+    if (hasEventAccess(eventId)) return; // host/admin sessions are not guests
+    let cancelled = false;
+    joinEvent(eventId).then((res) => {
+      if (!cancelled) setAccess(res);
+    });
+    return () => { cancelled = true; };
+  }, [eventId, event]);
+
+
   // Deep link from the organizer dashboard: ?capture=camera | upload | gallery
   useEffect(() => {
     if (loading || !event) return;
@@ -323,8 +341,15 @@ const EventPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [eventId]);
 
+  const quotaLeft =
+    !access || access.unlimitedPhotos ? Infinity : Math.max(0, access.photoLimit - access.used);
+
   const persistMedia = useCallback(async (blob: Blob, type: "image" | "video") => {
     if (!eventId) return;
+    if (quotaLeft <= 0) {
+      showFlash(`You've reached your ${access?.photoLimit} upload limit`);
+      return;
+    }
     setSavingCount((c) => c + 1);
     try {
       const compressed = type === "image" ? await compressImage(blob) : await compressVideo(blob);
@@ -332,14 +357,21 @@ const EventPage = () => {
       if (item) {
         setMediaItems((prev) => prev.some((m) => m.id === item.id) ? prev : [item, ...prev]);
         setCapturedCount((c) => c + 1);
+        setAccess((a) => (a ? { ...a, used: a.used + 1 } : a));
         showFlash(type === "image" ? "📸 Photo saved!" : "🎬 Video saved!");
       }
     } catch (err) {
-      console.error("Upload failed:", err);
-      showFlash("Upload failed, try again");
+      if (err instanceof QuotaError) {
+        setAccess((a) => (a ? { ...a, used: a.photoLimit } : a));
+        showFlash(`You've reached your ${access?.photoLimit} upload limit`);
+      } else {
+        console.error("Upload failed:", err);
+        showFlash("Upload failed, try again");
+      }
     }
     setSavingCount((c) => c - 1);
-  }, [eventId, guestName]);
+  }, [eventId, guestName, quotaLeft, access?.photoLimit]);
+
 
   const showFlash = (msg: string) => {
     setFlashMessage(msg);
@@ -612,6 +644,27 @@ const EventPage = () => {
     );
   }
 
+  /* ─── Guest capacity reached ─── */
+  if (access && !access.allowed && access.reason === "full") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
+          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
+            <ShieldX className="w-10 h-10 text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-display font-bold text-foreground mb-3">Event is Full</h1>
+          <p className="text-muted-foreground font-body max-w-sm mb-8">
+            This event has reached its guest capacity. Please ask the organizer to upgrade the guest plan to let more people join.
+          </p>
+          <Button variant="gold" onClick={() => navigate("/")}>
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Home
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
+
   const galleryMedia = mediaItems.map((m) => ({
     id: m.id,
     url: m.file_url,
@@ -753,7 +806,15 @@ const EventPage = () => {
           <h2 className="text-xl md:text-2xl font-display font-bold text-foreground mb-0.5">Capture the Moment ✨</h2>
           <p className="text-xs md:text-sm text-muted-foreground font-body">Take photos and videos for the gallery</p>
           {capturedCount > 0 && <p className="text-xs text-gold font-body mt-1">✓ {capturedCount} moment{capturedCount !== 1 ? "s" : ""} captured</p>}
+          {access && !access.unlimitedPhotos && (
+            <p className="text-xs text-muted-foreground font-body mt-1">
+              {quotaLeft > 0
+                ? `${quotaLeft} of ${access.photoLimit} uploads left for you`
+                : `You've used all ${access.photoLimit} of your uploads`}
+            </p>
+          )}
         </ScrollReveal>
+
 
         <ScrollReveal className="mb-3" delay={0.25}>
           <div className="relative">

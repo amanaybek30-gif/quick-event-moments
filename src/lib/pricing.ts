@@ -18,6 +18,33 @@ export const GUEST_TIERS: GuestTier[] = [
 export const tierFor = (guests: number): GuestTier =>
   GUEST_TIERS.find((t) => t.guests === guests) ?? GUEST_TIERS[0];
 
+export interface PhotoTier {
+  photos: number;
+  price: number;
+  label: string;
+}
+
+/** Photos/videos each guest may upload. 30 means unlimited (30+). */
+export const PHOTO_TIERS: PhotoTier[] = [
+  { photos: 5, price: 0, label: "5" },
+  { photos: 10, price: 300, label: "10" },
+  { photos: 20, price: 500, label: "20" },
+  { photos: 30, price: 800, label: "30+" },
+];
+
+export const photoTierFor = (photos: number): PhotoTier =>
+  PHOTO_TIERS.find((t) => t.photos === photos) ?? PHOTO_TIERS[0];
+
+export const UNLIMITED_PHOTOS = 30;
+
+/** Total plan price; null when the guest tier requires a custom quote. */
+export const totalPrice = (guests: number, photos: number): number | null => {
+  const g = tierFor(guests);
+  if (g.price === null) return null;
+  return g.price + photoTierFor(photos).price;
+};
+
+
 export const SALES_PHONE = "+251944010908";
 
 export const PAYMENT_METHODS = [

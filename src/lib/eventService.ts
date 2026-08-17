@@ -266,6 +266,52 @@ const getUploadExtension = (mimeType: string, type: "image" | "video") => {
   return type === "image" ? "jpg" : "webm";
 };
 
+// ── Guest identity, capacity & per-guest quota ──
+
+const GUEST_TOKEN_KEY = "mv_guest_token";
+
+/** Stable, opaque per-device guest identifier (used to enforce limits). */
+export const getGuestToken = (): string => {
+  let token = localStorage.getItem(GUEST_TOKEN_KEY);
+  if (!token) {
+    token = `g-${crypto.randomUUID()}`;
+    localStorage.setItem(GUEST_TOKEN_KEY, token);
+  }
+  return token;
+};
+
+export interface JoinResult {
+  allowed: boolean;
+  reason?: "full" | "closed";
+  used: number;
+  photoLimit: number;
+  unlimitedPhotos: boolean;
+}
+
+/** Claims one of the event's paid guest slots for this device. */
+export const joinEvent = async (eventId: string): Promise<JoinResult> => {
+  const { data, error } = await supabase.functions.invoke("event-write", {
+    body: { action: "join_event", eventId, guestToken: getGuestToken() },
+  });
+  if (error || !data) {
+    return { allowed: false, reason: "closed", used: 0, photoLimit: 5, unlimitedPhotos: false };
+  }
+  const d = data as Partial<JoinResult>;
+  return {
+    allowed: d.allowed === true,
+    reason: d.reason,
+    used: d.used ?? 0,
+    photoLimit: d.photoLimit ?? 5,
+    unlimitedPhotos: d.unlimitedPhotos ?? false,
+  };
+};
+
+export class QuotaError extends Error {
+  constructor() {
+    super("limit_reached");
+  }
+}
+
 export const uploadMedia = async (
   eventId: string,
   blob: Blob,
@@ -310,14 +356,26 @@ export const uploadMedia = async (
     return item;
   }
 
-  const { error: insertError } = await supabase.from("event_media").insert(item);
-  if (insertError) {
-    console.error("Media record insert error:", insertError);
-    return null;
+  // Guest session: the server enforces the per-guest media quota.
+  const { data, error } = await supabase.functions.invoke("event-write", {
+    body: {
+      action: "guest_add_media",
+      eventId,
+      guestToken: getGuestToken(),
+      mediaId: id,
+      file_url: fileUrl,
+      type,
+      uploader_name: item.uploader_name,
+    },
+  });
+  if (error) {
+    throw new QuotaError();
   }
+  if ((data as { ok?: boolean })?.ok !== true) return null;
 
   return item;
 };
+
 
 export const deleteMedia = async (eventId: string, mediaId: string): Promise<boolean> => {
   const { ok } = await callEventWrite("delete_media", { eventId, mediaId });
@@ -443,6 +501,7 @@ export interface NewEventInput {
   welcome_title: string;
   welcome_message: string;
   guest_limit: number;
+  photo_limit: number;
 }
 
 export interface PaymentInput {

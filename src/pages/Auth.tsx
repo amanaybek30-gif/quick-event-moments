@@ -26,7 +26,21 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const { t } = useI18n();
 
+  // Installed PWAs / in-app webviews cannot use popup-based OAuth, so we fall
+  // back to a full-page redirect flow that stays inside the same window.
+  const isStandalone = () =>
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+
   const handleGoogle = async () => {
+    if (isStandalone()) {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin, skipBrowserRedirect: false },
+      });
+      if (error) toast.error(t("somethingWrong"));
+      return;
+    }
     const { error } = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
