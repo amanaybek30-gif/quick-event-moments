@@ -207,7 +207,9 @@ const EventPage = () => {
 
   // Welcome intro overlay (shown once when guest lands)
   const [introVisible, setIntroVisible] = useState(true);
+  const [access, setAccess] = useState<JoinResult | null>(null);
   const [introCanDismiss, setIntroCanDismiss] = useState(false);
+
   const [introExiting, setIntroExiting] = useState(false);
 
   // After event loads, start the 3s timer to enable scroll-to-dismiss
