@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      event_guests: {
+        Row: {
+          created_at: string
+          event_id: string
+          guest_token: string
+          id: string
+          updated_at: string
+          uploads: number
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          guest_token: string
+          id?: string
+          updated_at?: string
+          uploads?: number
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          guest_token?: string
+          id?: string
+          updated_at?: string
+          uploads?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_guests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_media: {
         Row: {
           event_id: string
@@ -100,6 +135,7 @@ export type Database = {
           payment_method: string | null
           payment_status: string
           payment_submitted_at: string | null
+          photo_limit: number
           plan_price: number
           qr_enabled: boolean
           transaction_ref: string | null
@@ -124,6 +160,7 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string
           payment_submitted_at?: string | null
+          photo_limit?: number
           plan_price?: number
           qr_enabled?: boolean
           transaction_ref?: string | null
@@ -148,6 +185,7 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string
           payment_submitted_at?: string | null
+          photo_limit?: number
           plan_price?: number
           qr_enabled?: boolean
           transaction_ref?: string | null
