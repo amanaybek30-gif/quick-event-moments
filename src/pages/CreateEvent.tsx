@@ -16,7 +16,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { GUEST_TIERS, PAYMENT_METHODS, SALES_PHONE, tierFor } from "@/lib/pricing";
+import {
+  GUEST_TIERS,
+  PAYMENT_METHODS,
+  PHOTO_TIERS,
+  SALES_PHONE,
+  photoTierFor,
+  tierFor,
+  totalPrice,
+} from "@/lib/pricing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
