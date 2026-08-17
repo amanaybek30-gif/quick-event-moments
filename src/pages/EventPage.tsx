@@ -341,8 +341,15 @@ const EventPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [eventId]);
 
+  const quotaLeft =
+    !access || access.unlimitedPhotos ? Infinity : Math.max(0, access.photoLimit - access.used);
+
   const persistMedia = useCallback(async (blob: Blob, type: "image" | "video") => {
     if (!eventId) return;
+    if (quotaLeft <= 0) {
+      showFlash(`You've reached your ${access?.photoLimit} upload limit`);
+      return;
+    }
     setSavingCount((c) => c + 1);
     try {
       const compressed = type === "image" ? await compressImage(blob) : await compressVideo(blob);
@@ -350,14 +357,21 @@ const EventPage = () => {
       if (item) {
         setMediaItems((prev) => prev.some((m) => m.id === item.id) ? prev : [item, ...prev]);
         setCapturedCount((c) => c + 1);
+        setAccess((a) => (a ? { ...a, used: a.used + 1 } : a));
         showFlash(type === "image" ? "📸 Photo saved!" : "🎬 Video saved!");
       }
     } catch (err) {
-      console.error("Upload failed:", err);
-      showFlash("Upload failed, try again");
+      if (err instanceof QuotaError) {
+        setAccess((a) => (a ? { ...a, used: a.photoLimit } : a));
+        showFlash(`You've reached your ${access?.photoLimit} upload limit`);
+      } else {
+        console.error("Upload failed:", err);
+        showFlash("Upload failed, try again");
+      }
     }
     setSavingCount((c) => c - 1);
-  }, [eventId, guestName]);
+  }, [eventId, guestName, quotaLeft, access?.photoLimit]);
+
 
   const showFlash = (msg: string) => {
     setFlashMessage(msg);
