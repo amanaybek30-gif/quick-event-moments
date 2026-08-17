@@ -644,6 +644,27 @@ const EventPage = () => {
     );
   }
 
+  /* ─── Guest capacity reached ─── */
+  if (access && !access.allowed && access.reason === "full") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
+          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
+            <ShieldX className="w-10 h-10 text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-display font-bold text-foreground mb-3">Event is Full</h1>
+          <p className="text-muted-foreground font-body max-w-sm mb-8">
+            This event has reached its guest capacity. Please ask the organizer to upgrade the guest plan to let more people join.
+          </p>
+          <Button variant="gold" onClick={() => navigate("/")}>
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Home
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
+
   const galleryMedia = mediaItems.map((m) => ({
     id: m.id,
     url: m.file_url,
