@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
       if (!id || !name || !date) return json({ error: "Missing required event fields" }, 400);
       const updates = pickUpdates(ev);
       if (updates === null) return json({ error: "Invalid event fields" }, 400);
-      const plan = resolvePlan(ev.guest_limit);
+      const plan = resolvePlan(ev.guest_limit, ev.photo_limit);
       if (!plan) return json({ error: "Invalid guest tier" }, 400);
 
       // Paid tiers require proof of payment before the event is created.
