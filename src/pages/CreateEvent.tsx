@@ -50,6 +50,7 @@ interface Draft {
   welcomeTitle: string;
   welcomeMessage: string;
   guests: number;
+  photos: number;
 }
 
 const STEPS = [
@@ -82,6 +83,7 @@ const CreateEvent = () => {
     welcomeTitle: "Welcome!",
     welcomeMessage: "",
     guests: 10,
+    photos: 5,
   });
   const [payOpen, setPayOpen] = useState(false);
   const [payPage, setPayPage] = useState(0);
@@ -93,7 +95,9 @@ const CreateEvent = () => {
     price === null ? t("custom") : price === 0 ? t("free") : `${price.toLocaleString()} Birr`;
 
   const tier = tierFor(draft.guests);
+  const photoTier = photoTierFor(draft.photos);
   const isCustom = tier.price === null;
+  const total = totalPrice(draft.guests, draft.photos);
 
   const current = STEPS[step];
 
@@ -126,7 +130,7 @@ const CreateEvent = () => {
       window.location.href = `sms:${SALES_PHONE}`;
       return;
     }
-    const paid = !!tier.price && tier.price > 0;
+    const paid = !!total && total > 0;
     if (paid && !payOpen) {
       setPayPage(0);
       setPayOpen(true);
@@ -153,6 +157,7 @@ const CreateEvent = () => {
           welcome_title: draft.welcomeTitle.trim() || "Welcome!",
           welcome_message: draft.welcomeMessage.trim(),
           guest_limit: draft.guests,
+          photo_limit: draft.photos,
         },
         paid
           ? {
@@ -317,7 +322,7 @@ const CreateEvent = () => {
                     </p>
                     <p className="text-xs text-primary-foreground/70 font-body mt-1">{t("guests")}</p>
                     <p className="mt-3 text-lg font-display font-semibold text-gold">
-                      {priceLabel(tier.price)}
+                      {priceLabel(total)}
                     </p>
                   </div>
 
@@ -353,6 +358,34 @@ const CreateEvent = () => {
                     })}
                   </div>
 
+                  <div className="mt-6">
+                    <p className="text-xs uppercase tracking-widest text-primary-foreground/70 font-body mb-2">
+                      Photos per guest
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {PHOTO_TIERS.map((pt) => {
+                        const active = pt.photos === draft.photos;
+                        return (
+                          <button
+                            key={pt.photos}
+                            type="button"
+                            onClick={() => setDraft((d) => ({ ...d, photos: pt.photos }))}
+                            className={`h-16 rounded-2xl flex flex-col items-center justify-center font-body transition-all ${
+                              active
+                                ? "gold-gradient text-primary-foreground shadow-lg"
+                                : "bg-primary-foreground/10 text-primary-foreground/70 border border-primary-foreground/20"
+                            }`}
+                          >
+                            <span className="text-base font-display font-bold">{pt.label}</span>
+                            <span className="text-[10px] opacity-80">
+                              {pt.price === 0 ? t("free") : `${pt.price} Br`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {isCustom && (
                     <a
                       href={`sms:${SALES_PHONE}`}
@@ -381,7 +414,7 @@ const CreateEvent = () => {
                     <p className="text-muted-foreground">{draft.date}</p>
                     <p className="text-muted-foreground">{draft.venue}</p>
                     <p className="text-foreground font-medium">
-                      {isCustom ? "200+" : tier.guests} {t("guests")} · {priceLabel(tier.price)}
+                      {isCustom ? "200+" : tier.guests} {t("guests")} · {photoTier.label} / guest · {priceLabel(total)}
                     </p>
                     {draft.welcomeMessage && (
                       <p className="text-muted-foreground whitespace-pre-wrap pt-2 border-t border-border">
@@ -410,7 +443,7 @@ const CreateEvent = () => {
               : isCustom
                 ? t("contactForCustom")
                 : tier.price && tier.price > 0
-                  ? `${t("pay")} ${priceLabel(tier.price)}`
+                  ? `${t("pay")} ${priceLabel(total)}`
                   : t("createEvent")}
           </Button>
         ) : (
@@ -431,7 +464,7 @@ const CreateEvent = () => {
         <DialogContent className="max-w-[340px] rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">
-              {t("pay")} {priceLabel(tier.price)}
+              {t("pay")} {priceLabel(total)}
             </DialogTitle>
           </DialogHeader>
 
@@ -461,7 +494,7 @@ const CreateEvent = () => {
             ))}
             <div className="flex justify-between gap-3 pt-2 border-t border-border">
               <span className="text-muted-foreground">{t("amount")}</span>
-              <span className="font-semibold text-gold">{priceLabel(tier.price)}</span>
+              <span className="font-semibold text-gold">{priceLabel(total)}</span>
             </div>
           </div>
 
