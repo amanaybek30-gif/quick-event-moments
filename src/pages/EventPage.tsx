@@ -285,6 +285,18 @@ const EventPage = () => {
     return () => { cancelled = true; };
   }, [eventId]);
 
+  // Claim a guest slot: enforces the event's paid guest capacity server-side.
+  useEffect(() => {
+    if (!eventId || !event) return;
+    if (hasEventAccess(eventId)) return; // host/admin sessions are not guests
+    let cancelled = false;
+    joinEvent(eventId).then((res) => {
+      if (!cancelled) setAccess(res);
+    });
+    return () => { cancelled = true; };
+  }, [eventId, event]);
+
+
   // Deep link from the organizer dashboard: ?capture=camera | upload | gallery
   useEffect(() => {
     if (loading || !event) return;
