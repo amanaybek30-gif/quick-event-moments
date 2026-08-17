@@ -10,6 +10,10 @@ import {
   fetchShowcaseMedia,
   uploadMedia,
   hasEventAccess,
+  joinEvent,
+  QuotaError,
+  type JoinResult,
+
   type EventData,
   type MediaItem,
   type ShowcaseMediaItem,
