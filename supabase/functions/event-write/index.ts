@@ -75,16 +75,32 @@ const GUEST_PRICING: Record<number, number | null> = {
   201: null, // more than 200 guests -> custom price, quoted manually
 };
 
-const resolvePlan = (guests: unknown) => {
+// Photos/videos allowed per guest, and the add-on price (in Birr).
+const PHOTO_PRICING: Record<number, number> = {
+  5: 0,
+  10: 300,
+  20: 500,
+  30: 800, // 30+ -> unlimited
+};
+
+const UNLIMITED_GUESTS = 201;
+const UNLIMITED_PHOTOS = 30;
+
+const resolvePlan = (guests: unknown, photos: unknown) => {
   const g = typeof guests === "number" && Number.isInteger(guests) ? guests : 10;
   if (!(g in GUEST_PRICING)) return null;
-  const price = GUEST_PRICING[g];
+  const p = typeof photos === "number" && Number.isInteger(photos) ? photos : 5;
+  if (!(p in PHOTO_PRICING)) return null;
+  const guestPrice = GUEST_PRICING[g];
+  const price = (guestPrice ?? 0) + PHOTO_PRICING[p];
   return {
     guest_limit: g,
-    plan_price: price ?? 0,
+    photo_limit: p,
+    plan_price: price,
     payment_status: price === 0 ? "free" : "pending",
   };
 };
+
 
 const pickUpdates = (input: Record<string, unknown>) => {
   const out: Record<string, unknown> = {};
