@@ -147,7 +147,129 @@ Deno.serve(async (req) => {
       return json({ valid: await isHost(eventId, eventPassword) });
     }
 
+    // ── Guest capacity & per-guest media enforcement (public actions) ──
+    // A guest is identified by an opaque token generated once per device.
+    const guestToken = str(body.guestToken, 100);
+
+    const loadEventPlan = async (id: string) =>
+      await admin
+        .from("events")
+        .select("id,qr_enabled,guest_limit,photo_limit")
+        .eq("id", id)
+        .maybeSingle();
+
+    // Registers this device as a guest of the event (idempotent) and returns
+    // the remaining photo allowance. Rejects once the paid guest limit is hit.
+    if (action === "join_event") {
+      if (!eventId || !guestToken) return json({ error: "Invalid request" }, 400);
+      const { data: ev } = await loadEventPlan(eventId);
+      if (!ev) return json({ error: "Event not found" }, 404);
+      if (ev.qr_enabled === false) return json({ allowed: false, reason: "closed" });
+
+      const { data: existing } = await admin
+        .from("event_guests")
+        .select("id,uploads")
+        .eq("event_id", eventId)
+        .eq("guest_token", guestToken)
+        .maybeSingle();
+
+      const photoLimit = ev.photo_limit ?? 5;
+      const unlimitedPhotos = photoLimit >= UNLIMITED_PHOTOS;
+
+      if (existing) {
+        return json({
+          allowed: true,
+          used: existing.uploads,
+          photoLimit,
+          unlimitedPhotos,
+        });
+      }
+
+      const guestLimit = ev.guest_limit ?? 10;
+      if (guestLimit < UNLIMITED_GUESTS) {
+        const { count } = await admin
+          .from("event_guests")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", eventId);
+        if ((count ?? 0) >= guestLimit) {
+          return json({ allowed: false, reason: "full", guestLimit });
+        }
+      }
+
+      const { error } = await admin
+        .from("event_guests")
+        .insert({ event_id: eventId, guest_token: guestToken });
+      if (error) {
+        // Unique violation means a concurrent join already registered us.
+        const { data: retry } = await admin
+          .from("event_guests")
+          .select("uploads")
+          .eq("event_id", eventId)
+          .eq("guest_token", guestToken)
+          .maybeSingle();
+        if (!retry) return json({ allowed: false, reason: "full" });
+        return json({ allowed: true, used: retry.uploads, photoLimit, unlimitedPhotos });
+      }
+
+      await admin
+        .from("events")
+        .update({
+          contributors: (
+            await admin
+              .from("event_guests")
+              .select("id", { count: "exact", head: true })
+              .eq("event_id", eventId)
+          ).count ?? 0,
+        })
+        .eq("id", eventId);
+
+      return json({ allowed: true, used: 0, photoLimit, unlimitedPhotos });
+    }
+
+    // Guest upload: enforces both the guest slot and the per-guest media quota.
+    if (action === "guest_add_media") {
+      if (!eventId || !guestToken) return json({ error: "Invalid request" }, 400);
+      const { data: ev } = await loadEventPlan(eventId);
+      if (!ev) return json({ error: "Event not found" }, 404);
+      if (ev.qr_enabled === false) return json({ error: "Event is closed" }, 403);
+
+      const { data: guest } = await admin
+        .from("event_guests")
+        .select("id,uploads")
+        .eq("event_id", eventId)
+        .eq("guest_token", guestToken)
+        .maybeSingle();
+      if (!guest) return json({ error: "Join the event first" }, 403);
+
+      const photoLimit = ev.photo_limit ?? 5;
+      if (photoLimit < UNLIMITED_PHOTOS && guest.uploads >= photoLimit) {
+        return json({ error: "limit_reached", photoLimit }, 403);
+      }
+
+      const mediaId = str(body.mediaId, 200);
+      const fileUrl = str(body.file_url, 2000);
+      const type = str(body.type, 20);
+      const uploaderName = str(body.uploader_name, 200) || "Guest";
+      if (!mediaId || !fileUrl || (type !== "image" && type !== "video")) {
+        return json({ error: "Invalid media" }, 400);
+      }
+
+      const { error } = await admin.from("event_media").insert({
+        id: mediaId,
+        event_id: eventId,
+        file_url: fileUrl,
+        type,
+        uploader_name: uploaderName,
+      });
+      if (error) return json({ error: "Could not add media" }, 400);
+
+      const used = guest.uploads + 1;
+      await admin.from("event_guests").update({ uploads: used }).eq("id", guest.id);
+      return json({ ok: true, used, photoLimit });
+    }
+
     const userId = await getUserId(req);
+
 
     // Claim a legacy (unowned) event with its event password
     if (action === "claim_event") {
