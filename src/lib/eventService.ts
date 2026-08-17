@@ -501,6 +501,7 @@ export interface NewEventInput {
   welcome_title: string;
   welcome_message: string;
   guest_limit: number;
+  photo_limit: number;
 }
 
 export interface PaymentInput {
