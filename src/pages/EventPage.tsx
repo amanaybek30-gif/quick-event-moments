@@ -806,7 +806,15 @@ const EventPage = () => {
           <h2 className="text-xl md:text-2xl font-display font-bold text-foreground mb-0.5">Capture the Moment ✨</h2>
           <p className="text-xs md:text-sm text-muted-foreground font-body">Take photos and videos for the gallery</p>
           {capturedCount > 0 && <p className="text-xs text-gold font-body mt-1">✓ {capturedCount} moment{capturedCount !== 1 ? "s" : ""} captured</p>}
+          {access && !access.unlimitedPhotos && (
+            <p className="text-xs text-muted-foreground font-body mt-1">
+              {quotaLeft > 0
+                ? `${quotaLeft} of ${access.photoLimit} uploads left for you`
+                : `You've used all ${access.photoLimit} of your uploads`}
+            </p>
+          )}
         </ScrollReveal>
+
 
         <ScrollReveal className="mb-3" delay={0.25}>
           <div className="relative">
