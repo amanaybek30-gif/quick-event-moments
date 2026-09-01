@@ -67,11 +67,11 @@ const EVENT_FIELDS = [
 // Server-side source of truth for guest tiers and pricing (in Birr).
 const GUEST_PRICING: Record<number, number | null> = {
   10: 0,
-  25: 2500,
-  50: 3000,
-  100: 3500,
-  150: 4000,
-  200: 5000,
+  25: 2999,
+  50: 3499,
+  100: 3999,
+  150: 4499,
+  200: 5499,
   201: null, // more than 200 guests -> custom price, quoted manually
 };
 
