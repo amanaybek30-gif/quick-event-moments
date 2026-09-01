@@ -468,22 +468,24 @@ const CreateEvent = () => {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex gap-2 -mt-1">
-            {PAYMENT_METHODS.map((m, i) => (
-              <button
-                key={m.key}
-                type="button"
-                onClick={() => setPayPage(i)}
-                className={`flex-1 h-9 rounded-lg text-xs font-body transition-colors ${
-                  payPage === i
-                    ? "gold-gradient text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {m.name}
-              </button>
-            ))}
-          </div>
+          {PAYMENT_METHODS.length > 1 && (
+            <div className="flex gap-2 -mt-1">
+              {PAYMENT_METHODS.map((m, i) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setPayPage(i)}
+                  className={`flex-1 h-9 rounded-lg text-xs font-body transition-colors ${
+                    payPage === i
+                      ? "gold-gradient text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {m.name}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="rounded-xl border border-border p-4 space-y-2 font-body text-sm">
             {PAYMENT_METHODS[payPage].fields.map((f) => (
