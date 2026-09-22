@@ -26,50 +26,18 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const { t } = useI18n();
 
-  // Installed PWAs / in-app webviews cannot use popup-based OAuth, so we fall
-  // back to a full-page redirect flow that stays inside the same window.
-  const isStandalone = () =>
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.matchMedia("(display-mode: fullscreen)").matches ||
-    window.matchMedia("(display-mode: minimal-ui)").matches ||
-    (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-
-  const isInAppBrowser = () =>
-    /FBAN|FBAV|Instagram|Line|Twitter|WebView|wv\)|GSA\//i.test(navigator.userAgent);
-
-  const redirectSignIn = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-        skipBrowserRedirect: false,
-        queryParams: { prompt: "select_account" },
-      },
-    });
-    if (error) throw error;
-  };
-
   const handleGoogle = async () => {
     if (loading) return;
     setLoading(true);
     try {
-      if (isStandalone() || isInAppBrowser()) {
-        await redirectSignIn();
-        return;
-      }
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
+        extraParams: { prompt: "select_account" },
       });
-      if (result?.error) {
-        // Popup blocked or gateway failure — fall back to a full-page redirect.
-        await redirectSignIn();
-      }
-    } catch {
-      try {
-        await redirectSignIn();
-      } catch {
-        toast.error(t("somethingWrong"));
-      }
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("somethingWrong"));
     } finally {
       setLoading(false);
     }
