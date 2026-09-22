@@ -136,9 +136,10 @@ const Auth = () => {
             size="lg"
             className="w-full h-12 gap-3 rounded-xl font-body"
             onClick={handleGoogle}
+            disabled={loading}
           >
             <GoogleIcon />
-            {t("continueGoogle")}
+            {loading ? t("pleaseWait") : t("continueGoogle")}
           </Button>
 
           <div className="flex items-center gap-3 my-5">
