@@ -30,21 +30,49 @@ const Auth = () => {
   // back to a full-page redirect flow that stays inside the same window.
   const isStandalone = () =>
     window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    window.matchMedia("(display-mode: minimal-ui)").matches ||
     (window.navigator as unknown as { standalone?: boolean }).standalone === true;
 
-  const handleGoogle = async () => {
-    if (isStandalone()) {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin, skipBrowserRedirect: false },
-      });
-      if (error) toast.error(t("somethingWrong"));
-      return;
-    }
-    const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+  const isInAppBrowser = () =>
+    /FBAN|FBAV|Instagram|Line|Twitter|WebView|wv\)|GSA\//i.test(navigator.userAgent);
+
+  const redirectSignIn = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+        skipBrowserRedirect: false,
+        queryParams: { prompt: "select_account" },
+      },
     });
-    if (error) toast.error(t("somethingWrong"));
+    if (error) throw error;
+  };
+
+  const handleGoogle = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      if (isStandalone() || isInAppBrowser()) {
+        await redirectSignIn();
+        return;
+      }
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result?.error) {
+        // Popup blocked or gateway failure — fall back to a full-page redirect.
+        await redirectSignIn();
+      }
+    } catch {
+      try {
+        await redirectSignIn();
+      } catch {
+        toast.error(t("somethingWrong"));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEmail = async (e: React.FormEvent) => {
@@ -108,9 +136,10 @@ const Auth = () => {
             size="lg"
             className="w-full h-12 gap-3 rounded-xl font-body"
             onClick={handleGoogle}
+            disabled={loading}
           >
             <GoogleIcon />
-            {t("continueGoogle")}
+            {loading ? t("pleaseWait") : t("continueGoogle")}
           </Button>
 
           <div className="flex items-center gap-3 my-5">

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, SwitchCamera } from "lucide-react";
+import { ArrowLeft, SwitchCamera, Zap, ZapOff } from "lucide-react";
 import { uploadMedia, type MediaItem } from "@/lib/eventService";
 import { compressImage, compressVideo } from "@/lib/mediaCompression";
 
@@ -81,6 +81,8 @@ const HostCameraOverlay = ({ eventId, uploaderName = "Host", onClose, onUploaded
   const [savingCount, setSavingCount] = useState(0);
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
 
   const showFlash = (msg: string) => {
     setFlashMessage(msg);
@@ -162,6 +164,8 @@ const HostCameraOverlay = ({ eventId, uploaderName = "Host", onClose, onUploaded
           hwDefaultZoom.current = 1;
         }
         setZoomLevel(1);
+        setTorchAvailable(Boolean(caps?.torch));
+        setTorchOn(false);
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -283,6 +287,18 @@ const HostCameraOverlay = ({ eventId, uploaderName = "Host", onClose, onUploaded
     }, MAX_RECORDING_MS);
   };
 
+  const toggleTorch = async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await (track as any).applyConstraints({ advanced: [{ torch: next }] });
+      setTorchOn(next);
+    } catch {
+      showFlash("Flashlight is not available on this camera");
+    }
+  };
+
   const flipCamera = async () => {
     if (isRecording) await stopRecording();
     const newFacing = facingMode === "environment" ? "user" : "environment";
@@ -343,6 +359,16 @@ const HostCameraOverlay = ({ eventId, uploaderName = "Host", onClose, onUploaded
         <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-body z-20 animate-pulse">
           Saving {savingCount}...
         </div>
+      )}
+      {torchAvailable && facingMode === "environment" && (
+        <button
+          onClick={toggleTorch}
+          aria-label="Toggle flashlight"
+          className={`absolute left-4 w-11 h-11 rounded-full flex items-center justify-center z-20 ${torchOn ? "bg-yellow-400/90 text-black" : "bg-black/50 text-white"}`}
+          style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+        >
+          {torchOn ? <Zap className="w-5 h-5" /> : <ZapOff className="w-5 h-5" />}
+        </button>
       )}
       <div
         className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-2 py-1.5 z-10"

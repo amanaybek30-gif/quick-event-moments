@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useInView } from "framer-motion";
-import { Camera, Upload, Video, ArrowLeft, User, Eye, SwitchCamera, ChevronLeft, ChevronRight, ChevronDown, X, Play, Pause, Maximize, ShieldX } from "lucide-react";
+import { Camera, Upload, Video, ArrowLeft, User, Eye, SwitchCamera, ChevronLeft, ChevronRight, ChevronDown, X, Play, Pause, Maximize, ShieldX, Zap, ZapOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -200,6 +200,8 @@ const EventPage = () => {
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
   const hwZoomRange = useRef<{ min: number; max: number; step: number } | null>(null);
   const hwDefaultZoom = useRef<number>(1);
   const pinchStartDist = useRef<number | null>(null);
@@ -476,6 +478,8 @@ const EventPage = () => {
         hwDefaultZoom.current = 1;
       }
       setZoomLevel(1);
+      setTorchAvailable(Boolean(caps?.torch));
+      setTorchOn(false);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -571,6 +575,18 @@ const EventPage = () => {
       showFlash("30 minute limit reached — saving video");
       void stopRecording();
     }, MAX_RECORDING_MS);
+  };
+
+  const toggleTorch = async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await (track as any).applyConstraints({ advanced: [{ torch: next }] });
+      setTorchOn(next);
+    } catch {
+      showFlash("Flashlight is not available on this camera");
+    }
   };
 
   const flipCamera = async () => {
@@ -695,6 +711,16 @@ const EventPage = () => {
         </AnimatePresence>
         {savingCount > 0 && (
           <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-body z-20 animate-pulse">Saving {savingCount}...</div>
+        )}
+        {torchAvailable && facingMode === "environment" && (
+          <button
+            onClick={toggleTorch}
+            aria-label="Toggle flashlight"
+            className={`absolute top-4 left-4 w-11 h-11 rounded-full flex items-center justify-center z-20 ${torchOn ? "bg-yellow-400/90 text-black" : "bg-black/50 text-white"}`}
+            style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+          >
+            {torchOn ? <Zap className="w-5 h-5" /> : <ZapOff className="w-5 h-5" />}
+          </button>
         )}
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-2 py-1.5 z-10" style={{ bottom: "180px" }}>
           {pills.map((p) => {
