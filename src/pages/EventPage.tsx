@@ -200,6 +200,8 @@ const EventPage = () => {
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
   const hwZoomRange = useRef<{ min: number; max: number; step: number } | null>(null);
   const hwDefaultZoom = useRef<number>(1);
   const pinchStartDist = useRef<number | null>(null);
@@ -476,6 +478,8 @@ const EventPage = () => {
         hwDefaultZoom.current = 1;
       }
       setZoomLevel(1);
+      setTorchAvailable(Boolean(caps?.torch));
+      setTorchOn(false);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -571,6 +575,18 @@ const EventPage = () => {
       showFlash("30 minute limit reached — saving video");
       void stopRecording();
     }, MAX_RECORDING_MS);
+  };
+
+  const toggleTorch = async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await (track as any).applyConstraints({ advanced: [{ torch: next }] });
+      setTorchOn(next);
+    } catch {
+      showFlash("Flashlight is not available on this camera");
+    }
   };
 
   const flipCamera = async () => {
