@@ -360,6 +360,16 @@ const HostCameraOverlay = ({ eventId, uploaderName = "Host", onClose, onUploaded
           Saving {savingCount}...
         </div>
       )}
+      {torchAvailable && facingMode === "environment" && (
+        <button
+          onClick={toggleTorch}
+          aria-label="Toggle flashlight"
+          className={`absolute left-4 w-11 h-11 rounded-full flex items-center justify-center z-20 ${torchOn ? "bg-yellow-400/90 text-black" : "bg-black/50 text-white"}`}
+          style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+        >
+          {torchOn ? <Zap className="w-5 h-5" /> : <ZapOff className="w-5 h-5" />}
+        </button>
+      )}
       <div
         className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-2 py-1.5 z-10"
         style={{ bottom: "180px" }}
