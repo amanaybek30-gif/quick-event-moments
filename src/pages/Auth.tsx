@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+import { signInWithGoogle } from "@/lib/googleAuth";
 import QrScannerFab from "@/components/QrScannerFab";
 import heroImage from "@/assets/hero-event.jpg";
 import { useI18n } from "@/i18n";
@@ -30,10 +30,7 @@ const Auth = () => {
     if (loading) return;
     setLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-        extraParams: { prompt: "select_account" },
-      });
+      const result = await signInWithGoogle();
       if (result.error) throw result.error;
       if (result.redirected) return;
     } catch (err) {
