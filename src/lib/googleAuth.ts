@@ -9,8 +9,7 @@ const managedGoogleAuth = createLovableAuth({
 const isManagedAppOrigin = (origin: string) => {
   try {
     const hostname = new URL(origin).hostname;
-    return hostname === "localhost"
-      || hostname.endsWith(".lovable.app")
+    return hostname.endsWith(".lovable.app")
       || hostname.endsWith(".lovableproject.com");
   } catch {
     return false;
