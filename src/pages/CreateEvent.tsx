@@ -51,6 +51,8 @@ interface Draft {
   welcomeMessage: string;
   guests: number;
   photos: number;
+  password: string;
+  password2: string;
 }
 
 const STEPS = [
@@ -59,6 +61,7 @@ const STEPS = [
   { key: "venue", bg: stepVenue, title: "qVenue", hint: "qVenueHint" },
   { key: "cover", bg: stepCover, title: "qCover", hint: "qCoverHint" },
   { key: "welcome", bg: stepWelcome, title: "qWelcome", hint: "qWelcomeHint" },
+  { key: "password", bg: stepReview, title: "qPassword", hint: "qPasswordHint" },
   { key: "guests", bg: stepVenue, title: "qGuests", hint: "qGuestsHint" },
   { key: "review", bg: stepReview, title: "qReview", hint: "qReviewHint" },
 ] as const satisfies readonly {
@@ -84,6 +87,8 @@ const CreateEvent = () => {
     welcomeMessage: "",
     guests: 10,
     photos: 5,
+    password: "",
+    password2: "",
   });
   const [payOpen, setPayOpen] = useState(false);
   const [payPage, setPayPage] = useState(0);
@@ -109,6 +114,8 @@ const CreateEvent = () => {
         return !!draft.date;
       case "venue":
         return draft.venue.trim().length > 1;
+      case "password":
+        return draft.password.length >= 6 && draft.password === draft.password2;
       default:
         return true;
     }
@@ -158,6 +165,7 @@ const CreateEvent = () => {
           welcome_message: draft.welcomeMessage.trim(),
           guest_limit: draft.guests,
           photo_limit: draft.photos,
+          password: draft.password,
         },
         paid
           ? {
@@ -310,6 +318,30 @@ const CreateEvent = () => {
                     rows={5}
                     className="rounded-xl bg-background font-body"
                   />
+                </div>
+              )}
+
+              {current.key === "password" && (
+                <div className="space-y-3">
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={t("eventPassword")}
+                    value={draft.password}
+                    onChange={(e) => setDraft({ ...draft, password: e.target.value })}
+                    className="h-12 rounded-xl bg-background font-body"
+                  />
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={t("confirmPassword")}
+                    value={draft.password2}
+                    onChange={(e) => setDraft({ ...draft, password2: e.target.value })}
+                    className="h-12 rounded-xl bg-background font-body"
+                  />
+                  {draft.password2.length > 0 && draft.password !== draft.password2 && (
+                    <p className="text-xs text-destructive font-body">{t("passwordsMismatch")}</p>
+                  )}
                 </div>
               )}
 
