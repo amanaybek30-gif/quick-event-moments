@@ -369,7 +369,12 @@ export const uploadMedia = async (
     },
   });
   if (error) {
-    throw new QuotaError();
+    await supabase.storage.from("event-media").remove([path]);
+    let msg = "";
+    try { msg = (await (error as any).context?.json?.())?.error ?? ""; } catch { /* ignore */ }
+    if (msg === "limit_reached") throw new QuotaError();
+    console.error("Guest media save failed:", msg || error);
+    return null;
   }
   if ((data as { ok?: boolean })?.ok !== true) return null;
 
