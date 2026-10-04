@@ -502,6 +502,7 @@ export interface NewEventInput {
   welcome_message: string;
   guest_limit: number;
   photo_limit: number;
+  password: string;
 }
 
 export interface PaymentInput {
@@ -516,7 +517,10 @@ export const createOwnedEvent = async (
   payment?: PaymentInput
 ): Promise<boolean> => {
   const { ok } = await callEventWrite("create_event_self", { event, ...(payment || {}) });
-  if (ok) markOwnerAccess(event.id);
+  if (ok) {
+    markOwnerAccess(event.id);
+    storeEventPassword(event.id, event.password);
+  }
   return ok;
 };
 

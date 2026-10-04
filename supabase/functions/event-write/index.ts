@@ -22,7 +22,7 @@ const isAdmin = (pw: unknown) => {
 };
 
 const isHost = async (eventId: unknown, pw: unknown) => {
-  if (typeof eventId !== "string" || typeof pw !== "string") return false;
+  if (typeof eventId !== "string" || typeof pw !== "string" || pw.length === 0) return false;
   const { data } = await admin
     .from("events")
     .select("id")
@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
           .select("id", { count: "exact", head: true })
           .eq("event_id", eventId);
         if ((count ?? 0) >= guestLimit) {
-          return json({ allowed: false, reason: "full", guestLimit });
+          return json({ allowed: false, reason: "full", guestLimit, photoLimit, unlimitedPhotos });
         }
       }
 
@@ -305,6 +305,8 @@ Deno.serve(async (req) => {
       const name = str(ev.name, 300);
       const date = str(ev.date, 100);
       if (!id || !name || !date) return json({ error: "Missing required event fields" }, 400);
+      const eventPw = str(ev.password, 200);
+      if (!eventPw || eventPw.length < 6) return json({ error: "Event password required" }, 400);
       const updates = pickUpdates(ev);
       if (updates === null) return json({ error: "Invalid event fields" }, 400);
       const plan = resolvePlan(ev.guest_limit, ev.photo_limit);
@@ -326,7 +328,7 @@ Deno.serve(async (req) => {
         id,
         name,
         date,
-        password: "",
+        password: eventPw,
         owner_id: userId,
         uploads: 0,
         contributors: 0,

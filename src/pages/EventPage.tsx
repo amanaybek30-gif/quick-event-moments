@@ -515,6 +515,10 @@ const EventPage = () => {
   };
 
   const openCamera = async (mode: "photo" | "video") => {
+    if (access && !access.allowed) {
+      showFlash("Guest camera slots are full — gallery only");
+      return;
+    }
     setCameraMode(mode);
     setView("camera");
     requestFullscreen();
@@ -604,6 +608,10 @@ const EventPage = () => {
   };
 
   const handleFileUpload = () => {
+    if (access && !access.allowed) {
+      showFlash("Guest camera slots are full — gallery only");
+      return;
+    }
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*,video/*";
@@ -660,26 +668,8 @@ const EventPage = () => {
     );
   }
 
-  /* ─── Guest capacity reached ─── */
-  if (access && !access.allowed && access.reason === "full") {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
-          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
-            <ShieldX className="w-10 h-10 text-muted-foreground" />
-          </div>
-          <h1 className="text-2xl font-display font-bold text-foreground mb-3">Event is Full</h1>
-          <p className="text-muted-foreground font-body max-w-sm mb-8">
-            This event has reached its guest capacity. Please ask the organizer to upgrade the guest plan to let more people join.
-          </p>
-          <Button variant="gold" onClick={() => navigate("/")}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Home
-          </Button>
-        </motion.div>
-      </div>
-    );
-  }
-
+  // Guests beyond the paid capacity get gallery-only access (no camera/upload).
+  const galleryOnly = !!access && !access.allowed;
 
   const galleryMedia = mediaItems.map((m) => ({
     id: m.id,
@@ -776,10 +766,12 @@ const EventPage = () => {
                 <p className="text-sm text-muted-foreground font-body">Event Gallery</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => openCamera("photo")}><Camera className="w-5 h-5" /></Button>
-              <Button variant="ghost" size="icon" onClick={handleFileUpload}><Upload className="w-5 h-5" /></Button>
-            </div>
+            {!galleryOnly && (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={() => openCamera("photo")}><Camera className="w-5 h-5" /></Button>
+                <Button variant="ghost" size="icon" onClick={handleFileUpload}><Upload className="w-5 h-5" /></Button>
+              </div>
+            )}
           </div>
         </div>
         <div className="container mx-auto px-4 py-6">
@@ -832,7 +824,7 @@ const EventPage = () => {
           <h2 className="text-xl md:text-2xl font-display font-bold text-foreground mb-0.5">Capture the Moment ✨</h2>
           <p className="text-xs md:text-sm text-muted-foreground font-body">Take photos and videos for the gallery</p>
           {capturedCount > 0 && <p className="text-xs text-gold font-body mt-1">✓ {capturedCount} moment{capturedCount !== 1 ? "s" : ""} captured</p>}
-          {access && !access.unlimitedPhotos && (
+          {access && access.allowed && !access.unlimitedPhotos && (
             <p className="text-xs text-muted-foreground font-body mt-1">
               {quotaLeft > 0
                 ? `${quotaLeft} of ${access.photoLimit} uploads left for you`
@@ -850,17 +842,30 @@ const EventPage = () => {
         </ScrollReveal>
 
         <ScrollReveal className="space-y-2" delay={0.3}>
-          <Button variant="gold" className="w-full h-12 text-sm md:text-base font-semibold flex items-center justify-center gap-2" onClick={() => openCamera("photo")}>
-            <Camera className="w-5 h-5" /> Open Camera
-          </Button>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="gold-outline" className="h-11 text-sm font-medium" onClick={handleFileUpload}>
-              <Upload className="w-4 h-4 mr-1.5" /> Upload
-            </Button>
-            <Button variant="outline" className="h-11 text-sm font-medium" onClick={() => setView("gallery")}>
-              <Eye className="w-4 h-4 mr-1.5" /> Gallery{capturedCount > 0 && ` (${capturedCount})`}
-            </Button>
-          </div>
+          {galleryOnly ? (
+            <>
+              <p className="text-xs text-center text-muted-foreground font-body px-2">
+                This event has reached its guest camera limit. You can still enjoy the gallery.
+              </p>
+              <Button variant="gold" className="w-full h-12 text-sm font-semibold" onClick={() => setView("gallery")}>
+                <Eye className="w-4 h-4 mr-1.5" /> Gallery
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="gold" className="w-full h-12 text-sm md:text-base font-semibold flex items-center justify-center gap-2" onClick={() => openCamera("photo")}>
+                <Camera className="w-5 h-5" /> Open Camera
+              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="gold-outline" className="h-11 text-sm font-medium" onClick={handleFileUpload}>
+                  <Upload className="w-4 h-4 mr-1.5" /> Upload
+                </Button>
+                <Button variant="outline" className="h-11 text-sm font-medium" onClick={() => setView("gallery")}>
+                  <Eye className="w-4 h-4 mr-1.5" /> Gallery{capturedCount > 0 && ` (${capturedCount})`}
+                </Button>
+              </div>
+            </>
+          )}
         </ScrollReveal>
 
         <ScrollReveal className="text-center pt-6" delay={0.35}>

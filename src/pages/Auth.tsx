@@ -5,19 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { signInWithGoogle } from "@/lib/googleAuth";
 import QrScannerFab from "@/components/QrScannerFab";
 import heroImage from "@/assets/hero-event.jpg";
 import { useI18n } from "@/i18n";
-
-const GoogleIcon = () => (
-  <svg viewBox="0 0 48 48" className="w-4 h-4" aria-hidden="true">
-    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z" />
-    <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.2-3.9 6.6-9.6 6.6-16.9z" />
-    <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C1 16.4 0 20.1 0 24s1 7.6 2.6 10.8l7.8-6.1z" />
-    <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.9l-7.1-5.5c-2 1.3-4.6 2.1-8.8 2.1-6.3 0-11.7-3.7-13.6-9.8l-7.8 6.1C6.5 42.6 14.6 48 24 48z" />
-  </svg>
-);
 
 const Auth = () => {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -26,35 +16,36 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const { t } = useI18n();
 
-  const handleGoogle = async () => {
-    if (loading) return;
-    setLoading(true);
-    try {
-      const result = await signInWithGoogle();
-      if (result.error) throw result.error;
-      if (result.redirected) return;
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("somethingWrong"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(cleanEmail)) {
+      toast.error(t("invalidEmail"));
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
+        const { data, error } = await supabase.auth.signUp({
+          email: cleanEmail,
           password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        toast.success(t("welcomeToApp"));
+        // Identities is empty when the email is already registered.
+        if (data.user && data.user.identities?.length === 0) {
+          throw new Error("This email is already registered. Please sign in.");
+        }
+        // No session until the user clicks the verification link in their inbox.
+        toast.success(t("checkEmailConfirm"), { duration: 8000 });
+        setMode("signin");
+        setPassword("");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+        if (error) {
+          if (/not confirmed/i.test(error.message)) throw new Error(t("checkEmailConfirm"));
+          throw error;
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("somethingWrong"));
@@ -95,25 +86,6 @@ const Auth = () => {
           <p className="text-primary-foreground/70 font-body text-sm mb-7">
             {t("authSubtitle")}
           </p>
-
-          <Button
-            variant="secondary"
-            size="lg"
-            className="w-full h-12 gap-3 rounded-xl font-body"
-            onClick={handleGoogle}
-            disabled={loading}
-          >
-            <GoogleIcon />
-            {loading ? t("pleaseWait") : t("continueGoogle")}
-          </Button>
-
-          <div className="flex items-center gap-3 my-5">
-            <div className="h-px flex-1 bg-primary-foreground/20" />
-            <span className="text-[11px] uppercase tracking-widest text-primary-foreground/50 font-body">
-              {t("or")}
-            </span>
-            <div className="h-px flex-1 bg-primary-foreground/20" />
-          </div>
 
           <form onSubmit={handleEmail} className="space-y-3">
             <div className="relative">
