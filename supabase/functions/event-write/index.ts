@@ -242,7 +242,8 @@ Deno.serve(async (req) => {
       if (!guest) return json({ error: "Join the event first" }, 403);
 
       const photoLimit = ev.photo_limit ?? 5;
-      if (photoLimit < UNLIMITED_PHOTOS && guest.uploads >= photoLimit) {
+      const limited = photoLimit < UNLIMITED_PHOTOS;
+      if (limited && guest.uploads >= photoLimit) {
         return json({ error: "limit_reached", photoLimit }, 403);
       }
 
@@ -254,6 +255,27 @@ Deno.serve(async (req) => {
         return json({ error: "Invalid media" }, 400);
       }
 
+      // Atomically reserve one slot (compare-and-swap on the current count)
+      // so parallel uploads can never exceed the per-guest quota.
+      let used = guest.uploads;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (limited && used >= photoLimit) {
+          return json({ error: "limit_reached", photoLimit }, 403);
+        }
+        const { data: reserved } = await admin
+          .from("event_guests")
+          .update({ uploads: used + 1 })
+          .eq("id", guest.id)
+          .eq("uploads", used)
+          .select("uploads")
+          .maybeSingle();
+        if (reserved) { used = reserved.uploads; break; }
+        const { data: fresh } = await admin
+          .from("event_guests").select("uploads").eq("id", guest.id).maybeSingle();
+        used = fresh?.uploads ?? used;
+        if (attempt === 4) return json({ error: "Busy, try again" }, 409);
+      }
+
       const { error } = await admin.from("event_media").insert({
         id: mediaId,
         event_id: eventId,
@@ -261,10 +283,11 @@ Deno.serve(async (req) => {
         type,
         uploader_name: uploaderName,
       });
-      if (error) return json({ error: "Could not add media" }, 400);
-
-      const used = guest.uploads + 1;
-      await admin.from("event_guests").update({ uploads: used }).eq("id", guest.id);
+      if (error) {
+        // Release the reserved slot
+        await admin.from("event_guests").update({ uploads: used - 1 }).eq("id", guest.id).eq("uploads", used);
+        return json({ error: "Could not add media" }, 400);
+      }
       return json({ ok: true, used, photoLimit });
     }
 
