@@ -6,12 +6,16 @@ import {
   CalendarPlus,
   ChevronRight,
   Images,
+  KeyRound,
   Lock,
   LogOut,
   MapPin,
+  MoreVertical,
+  Pencil,
   Plus,
   Settings as SettingsIcon,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,15 +25,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import QrScannerFab from "@/components/QrScannerFab";
 import SettingsPanel from "@/components/SettingsPanel";
 import {
   EventData,
+  changeEventPassword,
   claimEvent,
+  deleteEvent,
   fetchMyEvents,
   fetchUnclaimedEvents,
+  updateEventDetails,
+  uploadCoverImage,
+  uploadWelcomeBackgroundImage,
 } from "@/lib/eventService";
 import heroImage from "@/assets/hero-event.jpg";
 import { verifyAdminPassword } from "@/lib/eventService";
@@ -41,18 +57,24 @@ const EventCard = ({
   event,
   locked,
   onClick,
+  onEdit,
+  onPassword,
+  onDelete,
 }: {
   event: EventData;
   locked?: boolean;
   onClick: () => void;
+  onEdit?: () => void;
+  onPassword?: () => void;
+  onDelete?: () => void;
 }) => {
   const { t } = useI18n();
   return (
-  <motion.button
+  <motion.div
     initial={{ opacity: 0, y: 12 }}
     animate={{ opacity: 1, y: 0 }}
     onClick={onClick}
-    className="w-full text-left rounded-2xl overflow-hidden bg-card border border-border active:scale-[0.99] transition-transform"
+    className="w-full text-left rounded-2xl overflow-hidden bg-card border border-border active:scale-[0.99] transition-transform cursor-pointer"
   >
     <div className="flex gap-3">
       <div className="w-24 h-24 shrink-0 bg-muted">
@@ -77,7 +99,34 @@ const EventCard = ({
           {locked ? (
             <Lock className="w-3.5 h-3.5 text-muted-foreground mt-1 shrink-0" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+            <>
+              {onEdit && (
+                <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="w-7 h-7 -mr-0.5 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted"
+                        aria-label={t("options")}
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={onEdit}>
+                        <Pencil className="w-4 h-4 mr-2" /> {t("editEvent")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={onPassword}>
+                        <KeyRound className="w-4 h-4 mr-2" /> {t("changePassword")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                        <Trash2 className="w-4 h-4 mr-2" /> {t("deleteEvent")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+              <ChevronRight className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+            </>
           )}
         </div>
         <p className="text-xs text-muted-foreground font-body flex items-center gap-1 mt-1">
@@ -103,7 +152,7 @@ const EventCard = ({
         )}
       </div>
     </div>
-  </motion.button>
+  </motion.div>
   );
 };
 
