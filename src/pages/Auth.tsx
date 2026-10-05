@@ -26,6 +26,17 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
+        if (
+          password.length < 6 ||
+          !/[a-z]/.test(password) ||
+          !/[A-Z]/.test(password) ||
+          !/[0-9]/.test(password) ||
+          !/[^A-Za-z0-9]/.test(password)
+        ) {
+          throw new Error(
+            "Password needs at least 6 characters with a lowercase letter, a capital letter, a number and a symbol."
+          );
+        }
         const { data, error } = await supabase.auth.signUp({
           email: cleanEmail,
           password,
