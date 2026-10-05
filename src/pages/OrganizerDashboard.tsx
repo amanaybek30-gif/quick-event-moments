@@ -18,7 +18,7 @@ import MediaGallery from "@/components/MediaGallery";
 import HostCameraOverlay from "@/components/HostCameraOverlay";
 import { compressImage, compressVideo } from "@/lib/mediaCompression";
 import {
-  fetchEventById, fetchEventMedia, deleteMedia, changeEventPassword,
+  fetchEventById, fetchEventMedia, deleteMedia, changeEventPassword, deleteEvent,
   clearEventMedia, updateEventQrEnabled, uploadMedia,
   updateEventDetails, uploadCoverImage, uploadWelcomeBackgroundImage,
   verifyEventPassword,
@@ -551,6 +551,24 @@ const OrganizerDashboard = () => {
               <Trash2 className="w-4 h-4 mr-2" /> Clear
             </Button>
           )}
+
+          <Button
+            variant="outline"
+            className="h-11 rounded-lg font-body text-destructive border-destructive/30 hover:bg-destructive/10"
+            onClick={async () => {
+              if (!eventId) return;
+              if (!window.confirm("Delete this event and all its photos and videos? This cannot be undone.")) return;
+              const ok = await deleteEvent(eventId);
+              if (ok) {
+                toast({ title: "Event deleted" });
+                navigate("/");
+              } else {
+                toast({ title: "Could not delete event", variant: "destructive" });
+              }
+            }}
+          >
+            <Trash2 className="w-4 h-4 mr-2" /> Delete Event
+          </Button>
         </div>
 
         <h2 className="text-lg font-display font-semibold text-foreground mb-4">Event Gallery</h2>

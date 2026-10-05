@@ -429,6 +429,7 @@ Deno.serve(async (req) => {
         if ((!admin_ok && !owner_ok) || !eventId) return json({ error: "Unauthorized" }, 401);
         await admin.from("event_media").delete().eq("event_id", eventId);
         await admin.from("event_showcase_media").delete().eq("event_id", eventId);
+        await admin.from("event_guests").delete().eq("event_id", eventId);
         const { error } = await admin.from("events").delete().eq("id", eventId);
         if (error) return json({ error: "Could not delete event" }, 400);
         return json({ ok: true });
