@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Download, QrCode, Upload, Users,
-  Image as ImageIcon, Share2, Lock, Trash2, Pencil, Camera, KeyRound,
+  Image as ImageIcon, Share2, Lock, Trash2, Pencil, Camera,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import MediaGallery from "@/components/MediaGallery";
 import HostCameraOverlay from "@/components/HostCameraOverlay";
 import { compressImage, compressVideo } from "@/lib/mediaCompression";
 import {
-  fetchEventById, fetchEventMedia, deleteMedia, changeEventPassword, deleteEvent,
+  fetchEventById, fetchEventMedia, deleteMedia, changeEventPassword,
   clearEventMedia, updateEventQrEnabled, uploadMedia,
   updateEventDetails, uploadCoverImage, uploadWelcomeBackgroundImage,
   verifyEventPassword,
@@ -481,11 +481,8 @@ const OrganizerDashboard = () => {
           <Button variant="gold-outline" className="h-11 rounded-lg font-body" onClick={copyLink}><Share2 className="w-4 h-4 mr-2" /> Share Link</Button>
         </div>
 
-        <div className={`grid ${mediaItems.length > 0 ? "grid-cols-3" : "grid-cols-2"} gap-2 mb-8`}>
+        <div className="flex gap-2 mb-8">
           <Dialog open={imagesDialogOpen} onOpenChange={(o) => (o ? openImagesDialog() : setImagesDialogOpen(false))}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="h-11 rounded-lg font-body"><Pencil className="w-4 h-4 mr-2" /> Edit</Button>
-            </DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-display text-xl">Edit Event</DialogTitle>
@@ -542,33 +539,11 @@ const OrganizerDashboard = () => {
             </DialogContent>
           </Dialog>
 
-          <Button variant="outline" className="h-11 rounded-lg font-body" onClick={() => setPwDialogOpen(true)}>
-            <KeyRound className="w-4 h-4 mr-2" /> Password
-          </Button>
-
           {mediaItems.length > 0 && (
             <Button variant="outline" className="h-11 rounded-lg font-body text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleClearGallery}>
               <Trash2 className="w-4 h-4 mr-2" /> Clear
             </Button>
           )}
-
-          <Button
-            variant="outline"
-            className="h-11 rounded-lg font-body text-destructive border-destructive/30 hover:bg-destructive/10"
-            onClick={async () => {
-              if (!eventId) return;
-              if (!window.confirm("Delete this event and all its photos and videos? This cannot be undone.")) return;
-              const ok = await deleteEvent(eventId);
-              if (ok) {
-                toast({ title: "Event deleted" });
-                navigate("/");
-              } else {
-                toast({ title: "Could not delete event", variant: "destructive" });
-              }
-            }}
-          >
-            <Trash2 className="w-4 h-4 mr-2" /> Delete Event
-          </Button>
         </div>
 
         <h2 className="text-lg font-display font-semibold text-foreground mb-4">Event Gallery</h2>
