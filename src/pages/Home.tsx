@@ -198,6 +198,23 @@ const Home = () => {
   const [claiming, setClaiming] = useState<EventData | null>(null);
   const [claimPw, setClaimPw] = useState("");
   const [claimBusy, setClaimBusy] = useState(false);
+  const [optionsEvent, setOptionsEvent] = useState<EventData | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editVenue, setEditVenue] = useState("");
+  const [welcomeTitle, setWelcomeTitle] = useState("Welcome!");
+  const [welcomeMsg, setWelcomeMsg] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [welcomeBgFile, setWelcomeBgFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [welcomeBgPreview, setWelcomeBgPreview] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [savingPw, setSavingPw] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -212,6 +229,93 @@ const Home = () => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  // ── Event card options (3-dot menu) ──
+  const openEdit = (ev: EventData) => {
+    setOptionsEvent(ev);
+    setEditName(ev.name);
+    setEditDate(ev.date);
+    setEditVenue(ev.venue || "");
+    setWelcomeTitle(ev.welcome_title || "Welcome!");
+    setWelcomeMsg(ev.welcome_message || "");
+    setCoverFile(null);
+    setWelcomeBgFile(null);
+    setCoverPreview(ev.cover_image || null);
+    setWelcomeBgPreview(ev.welcome_background_image || null);
+    setEditOpen(true);
+  };
+
+  const openPassword = (ev: EventData) => {
+    setOptionsEvent(ev);
+    setCurrentPw(sessionStorage.getItem(`mv_event_pw_${ev.id}`) || "");
+    setNewPw("");
+    setConfirmPw("");
+    setPwOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!optionsEvent) return;
+    setSavingEdit(true);
+    try {
+      const updates: Record<string, unknown> = {
+        name: editName,
+        date: editDate,
+        venue: editVenue,
+        welcome_title: welcomeTitle || "Welcome!",
+        welcome_message: welcomeMsg || null,
+      };
+      if (coverFile) {
+        const url = await uploadCoverImage(optionsEvent.id, coverFile);
+        if (url) updates.cover_image = url;
+      }
+      if (welcomeBgFile) {
+        const url = await uploadWelcomeBackgroundImage(optionsEvent.id, welcomeBgFile);
+        if (url) updates.welcome_background_image = url;
+      }
+      const ok = await updateEventDetails(optionsEvent.id, updates);
+      if (ok) {
+        toast.success(t("eventUpdated"));
+        setEditOpen(false);
+        load();
+      } else {
+        toast.error(t("somethingWrong"));
+      }
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleChangePw = async () => {
+    if (!optionsEvent) return;
+    if (newPw.length < 6) {
+      toast.error(t("passwordTooShort"));
+      return;
+    }
+    if (newPw !== confirmPw) {
+      toast.error(t("passwordsMismatch"));
+      return;
+    }
+    setSavingPw(true);
+    const ok = await changeEventPassword(optionsEvent.id, currentPw, newPw);
+    setSavingPw(false);
+    if (ok) {
+      toast.success(t("passwordChanged"));
+      setPwOpen(false);
+    } else {
+      toast.error(t("incorrectPassword"));
+    }
+  };
+
+  const handleDeleteEvent = async (ev: EventData) => {
+    if (!window.confirm(t("deleteEventConfirm"))) return;
+    const ok = await deleteEvent(ev.id);
+    if (ok) {
+      toast.success(t("eventDeleted"));
+      load();
+    } else {
+      toast.error(t("somethingWrong"));
+    }
+  };
 
   const handleClaim = async () => {
     if (!claiming) return;
@@ -313,7 +417,14 @@ const Home = () => {
               </div>
             ) : (
               mine.map((e) => (
-                <EventCard key={e.id} event={e} onClick={() => navigate(`/organizer/${e.id}`)} />
+                <EventCard
+                  key={e.id}
+                  event={e}
+                  onClick={() => navigate(`/organizer/${e.id}`)}
+                  onEdit={() => openEdit(e)}
+                  onPassword={() => openPassword(e)}
+                  onDelete={() => handleDeleteEvent(e)}
+                />
               ))
             )}
 
@@ -359,6 +470,77 @@ const Home = () => {
           ))}
         </div>
       </nav>
+
+      {/* Edit event dialog (from the card's 3-dot menu) */}
+      <Dialog open={editOpen} onOpenChange={(o) => !o && setEditOpen(false)}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">{t("editEvent")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <label className="block text-sm font-body text-muted-foreground mb-1">{t("eventName")}</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="font-body h-11" />
+            </div>
+            <div>
+              <label className="block text-sm font-body text-muted-foreground mb-1">{t("eventDate")}</label>
+              <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="font-body h-11" />
+            </div>
+            <div>
+              <label className="block text-sm font-body text-muted-foreground mb-1">{t("venue")}</label>
+              <Input value={editVenue} onChange={(e) => setEditVenue(e.target.value)} className="font-body h-11" />
+            </div>
+            <div>
+              <label className="block text-sm font-body text-muted-foreground mb-1">{t("welcomeTitle")}</label>
+              <Input value={welcomeTitle} onChange={(e) => setWelcomeTitle(e.target.value)} className="font-body h-11" />
+            </div>
+            <div>
+              <label className="block text-sm font-body text-muted-foreground mb-1">{t("welcomeMessage")}</label>
+              <Textarea value={welcomeMsg} onChange={(e) => setWelcomeMsg(e.target.value)} className="font-body min-h-[100px]" />
+            </div>
+            <div>
+              <label className="block text-sm font-body text-muted-foreground mb-2">{t("coverImage")}</label>
+              {coverPreview && (
+                <img src={coverPreview} alt="" className="w-full h-32 object-cover rounded-lg mb-2" />
+              )}
+              <Input type="file" accept="image/*" onChange={(e) => {
+                const f = e.target.files?.[0] || null;
+                setCoverFile(f);
+                if (f) setCoverPreview(URL.createObjectURL(f));
+              }} className="font-body" />
+            </div>
+            <div>
+              <label className="block text-sm font-body text-muted-foreground mb-2">{t("welcomeBackground")}</label>
+              {welcomeBgPreview && (
+                <img src={welcomeBgPreview} alt="" className="w-full h-32 object-cover rounded-lg mb-2" />
+              )}
+              <Input type="file" accept="image/*" onChange={(e) => {
+                const f = e.target.files?.[0] || null;
+                setWelcomeBgFile(f);
+                if (f) setWelcomeBgPreview(URL.createObjectURL(f));
+              }} className="font-body" />
+            </div>
+            <Button variant="gold" className="w-full" onClick={handleSaveEdit} disabled={savingEdit}>
+              {savingEdit ? t("saving") : t("saveChanges")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change password dialog (from the card's 3-dot menu) */}
+      <Dialog open={pwOpen} onOpenChange={(o) => !o && setPwOpen(false)}>
+        <DialogContent className="max-w-[340px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">{t("changePassword")}</DialogTitle>
+          </DialogHeader>
+          <Input type="password" placeholder={t("currentPassword")} value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} className="h-11 rounded-xl font-body" />
+          <Input type="password" placeholder={t("newPassword")} value={newPw} onChange={(e) => setNewPw(e.target.value)} className="h-11 rounded-xl font-body" />
+          <Input type="password" placeholder={t("confirmPassword")} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="h-11 rounded-xl font-body" />
+          <Button variant="gold" className="w-full h-11 rounded-xl" onClick={handleChangePw} disabled={savingPw || !newPw}>
+            {savingPw ? t("pleaseWait") : t("save")}
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       {/* Claim dialog */}
       <Dialog open={!!claiming} onOpenChange={(o) => !o && setClaiming(null)}>
